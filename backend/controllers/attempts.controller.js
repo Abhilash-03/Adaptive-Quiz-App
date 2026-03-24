@@ -96,7 +96,7 @@ const startAttempt = asyncHandler(async (req, res) => {
   // Calculate initial difficulty based on user skill and quiz setting
   const user = await User.findById(req.user._id);
   const initialDifficulty = calculateInitialDifficulty(
-    user.skillLevel,
+    user.studentProfile?.skillLevel || 50,
     quiz.initialDifficulty
   );
 
@@ -237,7 +237,7 @@ const submitAnswer = asyncHandler(async (req, res) => {
     const newDifficulty = calculateNextDifficulty(
       currentDifficulty,
       answeredQuestions,
-      user.skillLevel
+      user.studentProfile?.skillLevel || 50
     );
 
     attempt.difficultyProgression.push(newDifficulty);
@@ -393,13 +393,17 @@ const finishAttempt = async (attempt, res, message) => {
 
   // Use AI service to update user's skill level
   const user = await User.findById(attempt.user);
-  const newSkillLevel = updateUserSkill(user.skillLevel, {
+  const newSkillLevel = updateUserSkill(user.studentProfile?.skillLevel || 50, {
     correctAnswers,
     totalQuestions: attempt.answers.length,
     avgDifficulty,
     timePerformance: attempt.timeSpent < quiz.duration * 60 * 0.7 ? 0.8 : 0.5,
   });
-  user.skillLevel = newSkillLevel;
+  
+  // Update student profile
+  if (!user.studentProfile) user.studentProfile = {};
+  user.studentProfile.skillLevel = newSkillLevel;
+  user.studentProfile.totalQuizzesTaken = (user.studentProfile.totalQuizzesTaken || 0) + 1;
   await user.save();
 
   // Use AI service to analyze performance and generate recommendations

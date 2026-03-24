@@ -26,11 +26,19 @@ const userSchema = new Schema({
     default: "student",
   },
   avatar: String,
-  skillLevel: {
-    type: Number,
-    default: 50,
-    min: 0,
-    max: 100,
+  // Student-specific profile (only for students - removed for teachers via pre-save)
+  studentProfile: {
+    skillLevel: {
+      type: Number,
+      min: 0,
+      max: 100,
+    },
+    totalQuizzesTaken: {
+      type: Number,
+    },
+    averageScore: {
+      type: Number,
+    },
   },
   isVerified: {
      type: Boolean,
@@ -43,5 +51,27 @@ const userSchema = new Schema({
   resetPasswordToken: String,
   resetPasswordExpires: Date,
 }, { timestamps: true });
+
+// Pre-save hook to handle role-specific fields
+userSchema.pre('save', async function() {
+  if (this.role === 'teacher') {
+    // Teachers don't need studentProfile - remove it
+    this.studentProfile = undefined;
+  } else if (this.role === 'student') {
+    // Initialize studentProfile with defaults for students
+    if (!this.studentProfile) {
+      this.studentProfile = {};
+    }
+    if (this.studentProfile.skillLevel === undefined) {
+      this.studentProfile.skillLevel = 50;
+    }
+    if (this.studentProfile.totalQuizzesTaken === undefined) {
+      this.studentProfile.totalQuizzesTaken = 0;
+    }
+    if (this.studentProfile.averageScore === undefined) {
+      this.studentProfile.averageScore = 0;
+    }
+  }
+});
 
 export default model('User', userSchema);

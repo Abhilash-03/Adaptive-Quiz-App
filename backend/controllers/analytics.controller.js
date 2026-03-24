@@ -90,7 +90,7 @@ const getStudentDashboard = asyncHandler(async (req, res) => {
   ApiResponse.success(res, "Dashboard data fetched", {
     user: {
       fullname: req.user.fullname,
-      skillLevel: req.user.skillLevel,
+      skillLevel: req.user.studentProfile?.skillLevel || 50,
       avatar: req.user.avatar,
     },
     stats,
@@ -397,7 +397,7 @@ const getStudentProgress = asyncHandler(async (req, res) => {
     categoryAnalysis,
     strengths,
     weaknesses,
-    currentSkillLevel: req.user.skillLevel,
+    currentSkillLevel: req.user.studentProfile?.skillLevel || 50,
   });
 });
 

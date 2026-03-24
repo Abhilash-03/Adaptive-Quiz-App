@@ -23,16 +23,20 @@ const sendTokenResponse = (user, statusCode, res, message) => {
     sameSite: "strict",
   };
 
-  // Remove password from output
+  // Remove password from output - build response based on role
   const userResponse = {
     _id: user._id,
     fullname: user.fullname,
     email: user.email,
     role: user.role,
     avatar: user.avatar,
-    skillLevel: user.skillLevel,
     isVerified: user.isVerified,
   };
+
+  // Add student-specific fields only for students
+  if (user.role === 'student') {
+    userResponse.studentProfile = user.studentProfile;
+  }
 
   res.status(statusCode).cookie("token", token, cookieOptions).json({
     success: true,
