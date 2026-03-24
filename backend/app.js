@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import cors from "cors";
 import cookieParser from "cookie-parser";
 import passport from "passport";
 import connectDB from "./config/db.js";
@@ -8,6 +9,12 @@ import { errorHandler, notFoundHandler } from "./middleware/error.middleware.js"
 
 // Routes
 import authRoutes from "./routes/auth.routes.js";
+import userRoutes from "./routes/users.routes.js";
+import questionRoutes from "./routes/questions.routes.js";
+import quizRoutes from "./routes/quizzes.routes.js";
+import attemptRoutes from "./routes/attempts.routes.js";
+import notificationRoutes from "./routes/notifications.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -19,6 +26,12 @@ connectDB();
 configurePassport();
 
 const app = express();
+
+// CORS configuration
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+}));
 
 // Body parser middleware
 app.use(express.json());
@@ -35,6 +48,12 @@ app.get("/", (req, res) => {
 
 // Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/questions", questionRoutes);
+app.use("/api/quizzes", quizRoutes);
+app.use("/api/attempts", attemptRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 // 404 Handler
 app.use(notFoundHandler);
