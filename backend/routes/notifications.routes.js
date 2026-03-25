@@ -8,6 +8,7 @@ import {
   sendNotification,
 } from "../controllers/notifications.controller.js";
 import { protect, authorize } from "../middleware/auth.middleware.js";
+import { validate, validateObjectId } from "../middleware/validate.middleware.js";
 
 const router = Router();
 
@@ -19,10 +20,10 @@ router.get("/", getNotifications);
 router.patch("/read-all", markAllAsRead);
 router.delete("/read", deleteReadNotifications);
 
-router.patch("/:id/read", markAsRead);
-router.delete("/:id", deleteNotification);
+router.patch("/:id/read", validateObjectId("id"), markAsRead);
+router.delete("/:id", validateObjectId("id"), deleteNotification);
 
 // Teacher/Admin can send notifications
-router.post("/send", authorize("teacher"), sendNotification);
+router.post("/send", authorize("teacher"), validate("sendNotification"), sendNotification);
 
 export default router;

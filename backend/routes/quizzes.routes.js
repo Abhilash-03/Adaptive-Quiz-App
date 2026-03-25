@@ -12,6 +12,7 @@ import {
   getCategories,
 } from "../controllers/quizzes.controller.js";
 import { protect, authorize } from "../middleware/auth.middleware.js";
+import { validate, validateObjectId } from "../middleware/validate.middleware.js";
 
 const router = Router();
 
@@ -27,19 +28,19 @@ router.get("/available", authorize("student"), getAvailableQuizzes);
 // Teacher routes
 router.route("/")
   .get(authorize("teacher"), getQuizzes)
-  .post(authorize("teacher"), createQuiz);
+  .post(authorize("teacher"), validate("createQuiz"), createQuiz);
 
 router.route("/:id")
-  .get(getQuiz) // Both teacher and student can access (with different permissions)
-  .put(authorize("teacher"), updateQuiz)
-  .delete(authorize("teacher"), deleteQuiz);
+  .get(validateObjectId("id"), getQuiz) // Both teacher and student can access (with different permissions)
+  .put(authorize("teacher"), validateObjectId("id"), validate("updateQuiz"), updateQuiz)
+  .delete(authorize("teacher"), validateObjectId("id"), deleteQuiz);
 
 // Question management for quiz
 router.route("/:id/questions")
-  .post(authorize("teacher"), addQuestions)
-  .delete(authorize("teacher"), removeQuestions);
+  .post(authorize("teacher"), validateObjectId("id"), validate("addQuestions"), addQuestions)
+  .delete(authorize("teacher"), validateObjectId("id"), validate("removeQuestions"), removeQuestions);
 
 // Publish/unpublish quiz
-router.patch("/:id/publish", authorize("teacher"), togglePublish);
+router.patch("/:id/publish", authorize("teacher"), validateObjectId("id"), togglePublish);
 
 export default router;

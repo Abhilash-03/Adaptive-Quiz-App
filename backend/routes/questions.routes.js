@@ -9,6 +9,7 @@ import {
   getTopics,
 } from "../controllers/questions.controller.js";
 import { protect, authorize } from "../middleware/auth.middleware.js";
+import { validate, validateObjectId } from "../middleware/validate.middleware.js";
 
 const router = Router();
 
@@ -25,11 +26,11 @@ router.get("/topics/:category", getTopics);
 // CRUD operations
 router.route("/")
   .get(getQuestions)
-  .post(createQuestion);
+  .post(validate("createQuestion"), createQuestion);
 
 router.route("/:id")
-  .get(getQuestion)
-  .put(updateQuestion)
-  .delete(deleteQuestion);
+  .get(validateObjectId("id"), getQuestion)
+  .put(validateObjectId("id"), validate("updateQuestion"), updateQuestion)
+  .delete(validateObjectId("id"), deleteQuestion);
 
 export default router;

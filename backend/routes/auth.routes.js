@@ -2,12 +2,13 @@ import { Router } from "express";
 import passport from "passport";
 import { register, login, logout, getMe, googleCallback } from "../controllers/auth.controller.js";
 import { protect } from "../middleware/auth.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
 
 const router = Router();
 
 // Local authentication
-router.post("/register", register);
-router.post("/login", login);
+router.post("/register", validate("register"), register);
+router.post("/login", validate("login"), login);
 router.post("/logout", protect, logout);
 router.get("/me", protect, getMe);
 

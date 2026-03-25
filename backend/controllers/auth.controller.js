@@ -81,11 +81,6 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Validate input
-  if (!email || !password) {
-    throw ApiError.badRequest("Please provide email and password");
-  }
-
   // Check for user
   const user = await User.findOne({ email });
   if (!user) {
