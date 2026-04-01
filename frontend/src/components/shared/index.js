@@ -8,6 +8,7 @@ export { DifficultyBadge, StatusBadge, QuestionTypeBadge } from "./Badges";
 export { ScoreDisplay, AttemptStatusIcon, AttemptStatusCircle } from "./ScoreDisplay";
 export { StudentQuizCard, TeacherQuizCard } from "./QuizCard";
 export { AttemptCard } from "./AttemptCard";
+export { NotificationCard, NotificationList } from "./NotificationCard";
 
 // Question components
 export { QuestionBrowser } from "./QuestionBrowser";

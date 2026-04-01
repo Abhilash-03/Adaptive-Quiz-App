@@ -18,6 +18,7 @@ import QuizDetailPage from "@/pages/student/QuizDetailPage";
 import TakeQuizPage from "@/pages/student/TakeQuizPage";
 import AttemptsPage from "@/pages/student/AttemptsPage";
 import AttemptDetailPage from "@/pages/student/AttemptDetailPage";
+import StudentNotificationsPage from "@/pages/student/NotificationsPage";
 
 // Teacher Pages
 import TeacherDashboard from "@/pages/teacher/TeacherDashboard";
@@ -26,6 +27,12 @@ import QuestionFormPage from "@/pages/teacher/QuestionFormPage";
 import TeacherQuizzesPage from "@/pages/teacher/QuizzesPage";
 import QuizFormPage from "@/pages/teacher/QuizFormPage";
 import TeacherQuizDetailPage from "@/pages/teacher/QuizDetailPage";
+import TeacherNotificationsPage from "@/pages/teacher/NotificationsPage";
+import TeacherStudentsPage from "@/pages/teacher/StudentsPage";
+
+// Shared Pages
+import ProfilePage from "@/pages/shared/ProfilePage";
+import SettingsPage from "@/pages/shared/SettingsPage";
 
 // Create Query Client
 const queryClient = new QueryClient({
@@ -108,9 +115,9 @@ function App() {
             <Route path="quiz/:quizId/attempt/:attemptId" element={<TakeQuizPage />} />
             <Route path="attempts" element={<AttemptsPage />} />
             <Route path="attempt/:attemptId" element={<AttemptDetailPage />} />
-            <Route path="notifications" element={<div className="p-6">Notifications - Coming Soon</div>} />
-            <Route path="profile" element={<div className="p-6">Profile - Coming Soon</div>} />
-            <Route path="settings" element={<div className="p-6">Settings - Coming Soon</div>} />
+            <Route path="notifications" element={<StudentNotificationsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
@@ -132,10 +139,10 @@ function App() {
             <Route path="quizzes/new" element={<QuizFormPage />} />
             <Route path="quiz/:quizId" element={<TeacherQuizDetailPage />} />
             <Route path="quiz/:quizId/edit" element={<QuizFormPage />} />
-            <Route path="students" element={<div className="p-6">Students - Coming Soon</div>} />
-            <Route path="notifications" element={<div className="p-6">Notifications - Coming Soon</div>} />
-            <Route path="profile" element={<div className="p-6">Profile - Coming Soon</div>} />
-            <Route path="settings" element={<div className="p-6">Settings - Coming Soon</div>} />
+            <Route path="students" element={<TeacherStudentsPage />} />
+            <Route path="notifications" element={<TeacherNotificationsPage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 

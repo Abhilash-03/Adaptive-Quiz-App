@@ -14,8 +14,9 @@ import {
   User,
   Brain
 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button, Badge } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
+import { useUnreadNotificationsCount } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 const teacherNavItems = [
@@ -39,6 +40,8 @@ export default function DashboardLayout() {
   const { user, logout, isTeacher } = useAuthStore();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  
+  const { data: unreadCount = 0 } = useUnreadNotificationsCount();
 
   const navItems = isTeacher() ? teacherNavItems : studentNavItems;
 
@@ -124,6 +127,22 @@ export default function DashboardLayout() {
           </button>
 
           <div className="flex-1" />
+
+          {/* Notification bell */}
+          <Link
+            to={isTeacher() ? "/teacher/notifications" : "/student/notifications"}
+            className="relative p-2 rounded-lg hover:bg-accent transition-colors mr-2"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <Badge 
+                variant="destructive" 
+                className="absolute -top-1 -right-1 h-5 min-w-5 flex items-center justify-center px-1 text-xs"
+              >
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </Badge>
+            )}
+          </Link>
 
           {/* User menu */}
           <div className="relative">

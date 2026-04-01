@@ -48,3 +48,26 @@ export {
   useTeacherDashboard,
   useQuizAnalytics,
 } from "./useAnalytics";
+
+// Notification hooks
+export {
+  notificationKeys,
+  useNotifications,
+  useUnreadNotificationsCount,
+  useMarkAsRead,
+  useMarkAllAsRead,
+  useDeleteNotification,
+  useDeleteReadNotifications,
+  useSendNotification,
+} from "./useNotifications";
+
+// User hooks
+export {
+  userKeys,
+  useProfile,
+  useUpdateProfile,
+  useChangePassword,
+  useUsers,
+  useUser,
+  useToggleUserStatus,
+} from "./useUsers";
