@@ -107,7 +107,7 @@ const deleteReadNotifications = asyncHandler(async (req, res) => {
 // @desc    Send notification (Teacher to students or system)
 // @access  Private (Teacher/Admin)
 const sendNotification = asyncHandler(async (req, res) => {
-  const { title, message, type, userIds, quizId } = req.body;
+  const { title, message, type, userIds, quizId, sendToAll } = req.body;
 
   if (!title || !message || !type) {
     throw ApiError.badRequest("Title, message, and type are required");
@@ -120,6 +120,10 @@ const sendNotification = asyncHandler(async (req, res) => {
     recipients = userIds;
   } else if (quizId) {
     // If quizId provided, could send to all students (for announcements)
+    const students = await User.find({ role: "student" }).select("_id");
+    recipients = students.map((s) => s._id);
+  } else if (sendToAll) {
+    // Send to all students
     const students = await User.find({ role: "student" }).select("_id");
     recipients = students.map((s) => s._id);
   } else {

@@ -63,10 +63,13 @@ const changePassword = asyncHandler(async (req, res) => {
 // @desc    Get all users (for teachers to see students)
 // @access  Private (Teacher)
 const getUsers = asyncHandler(async (req, res) => {
-  const { role, page = 1, limit = 20, search } = req.query;
+  const { role, page = 1, limit = 20, search, isActive } = req.query;
 
   const filter = {};
   if (role) filter.role = role;
+  if (isActive !== undefined) {
+    filter.isActive = isActive === "true";
+  }
   if (search) {
     filter.$or = [
       { fullname: { $regex: search, $options: "i" } },

@@ -140,6 +140,9 @@ const schemas = {
       "string.empty": "Category is required",
       "any.required": "Category is required",
     }),
+    questions: Joi.array().items(commonFields.objectId).messages({
+      "array.base": "Questions must be an array",
+    }),
     duration: Joi.number().min(1).max(180).required().messages({
       "number.min": "Duration must be at least 1 minute",
       "number.max": "Duration cannot exceed 180 minutes",
@@ -159,14 +162,14 @@ const schemas = {
     }),
     isAdaptive: Joi.boolean().default(false),
     initialDifficulty: Joi.string().valid("easy", "medium", "hard").default("medium"),
-    maxAttempts: Joi.number().min(1).default(3),
+    allowedAttempts: Joi.number().min(1).default(1),
     shuffleQuestions: Joi.boolean().default(true),
-    showResults: Joi.boolean().default(true),
-    scheduledFor: Joi.date().greater("now").allow(null).messages({
-      "date.greater": "Scheduled date must be in the future",
+    showResultsImmediately: Joi.boolean().default(true),
+    startDate: Joi.date().allow(null, "").messages({
+      "date.base": "Start date must be a valid date",
     }),
-    expiresAt: Joi.date().greater(Joi.ref("scheduledFor")).allow(null).messages({
-      "date.greater": "Expiry date must be after scheduled date",
+    endDate: Joi.date().allow(null, "").messages({
+      "date.base": "End date must be a valid date",
     }),
   }),
 
@@ -174,17 +177,18 @@ const schemas = {
     title: Joi.string().trim().min(3).max(100),
     description: Joi.string().trim().max(500).allow(""),
     category: Joi.string().trim(),
+    questions: Joi.array().items(commonFields.objectId),
     duration: Joi.number().min(1).max(180),
     totalQuestions: Joi.number().min(1),
     passingMarks: Joi.number().min(0),
     totalMarks: Joi.number().min(1),
     isAdaptive: Joi.boolean(),
     initialDifficulty: Joi.string().valid("easy", "medium", "hard"),
-    maxAttempts: Joi.number().min(1),
+    allowedAttempts: Joi.number().min(1),
     shuffleQuestions: Joi.boolean(),
-    showResults: Joi.boolean(),
-    scheduledFor: Joi.date().allow(null),
-    expiresAt: Joi.date().allow(null),
+    showResultsImmediately: Joi.boolean(),
+    startDate: Joi.date().allow(null, ""),
+    endDate: Joi.date().allow(null, ""),
   }),
 
   addQuestions: Joi.object({
@@ -217,10 +221,8 @@ const schemas = {
     type: Joi.string().valid("info", "warning", "success", "error", "quiz-reminder", "result", "announcement").default("info").messages({
       "any.only": "Invalid notification type",
     }),
-    recipients: Joi.alternatives().try(
-      Joi.string().valid("all", "students", "teachers"),
-      Joi.array().items(commonFields.objectId)
-    ).default("all"),
+    userIds: Joi.array().items(commonFields.objectId).optional(),
+    sendToAll: Joi.boolean().optional(),
     quizId: commonFields.objectId.optional(),
   }),
 

@@ -108,7 +108,8 @@ const getTeacherDashboard = asyncHandler(async (req, res) => {
   const teacherId = req.user._id;
 
   // Get teacher's quizzes
-  const quizzes = await Quiz.find({ createdBy: teacherId });
+  const quizzes = await Quiz.find({ createdBy: teacherId })
+    .sort({ createdAt: -1 });
   const quizIds = quizzes.map((q) => q._id);
 
   // Quiz stats
@@ -117,6 +118,9 @@ const getTeacherDashboard = asyncHandler(async (req, res) => {
 
   // Question stats
   const totalQuestions = await Question.countDocuments({ createdBy: teacherId });
+
+  // Total students count
+  const totalStudents = await User.countDocuments({ role: "student" });
 
   // Attempt stats across all teacher's quizzes
   const attemptStats = await QuizAttempt.aggregate([
@@ -136,9 +140,12 @@ const getTeacherDashboard = asyncHandler(async (req, res) => {
     ? Math.round((stats.passCount / stats.totalAttempts) * 100) 
     : 0;
 
-  // Recent activity
+  // Recent quizzes (last 5)
+  const recentQuizzes = quizzes.slice(0, 5);
+
+  // Recent student attempts
   const recentAttempts = await QuizAttempt.find({ quiz: { $in: quizIds }, status: "completed" })
-    .populate("user", "fullname email")
+    .populate("user", "fullname email avatar")
     .populate("quiz", "title")
     .sort({ createdAt: -1 })
     .limit(10);
@@ -182,14 +189,14 @@ const getTeacherDashboard = asyncHandler(async (req, res) => {
   ]);
 
   ApiResponse.success(res, "Teacher dashboard fetched", {
-    stats: {
-      totalQuizzes,
-      publishedQuizzes,
-      totalQuestions,
-      totalAttempts: stats.totalAttempts,
-      averageScore: Math.round(stats.avgScore || 0),
-      passRate,
-    },
+    totalQuizzes,
+    publishedQuizzes,
+    totalQuestions,
+    totalStudents,
+    totalAttempts: stats.totalAttempts,
+    averageScore: Math.round(stats.avgScore || 0),
+    passRate,
+    recentQuizzes,
     recentAttempts,
     quizPerformance,
     difficultyDistribution,

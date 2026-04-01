@@ -12,6 +12,7 @@ const createQuiz = asyncHandler(async (req, res) => {
     title,
     description,
     category,
+    questions,
     totalQuestions,
     totalMarks,
     passingMarks,
@@ -35,10 +36,19 @@ const createQuiz = asyncHandler(async (req, res) => {
     throw ApiError.badRequest("End date must be after start date");
   }
 
+  // Validate questions if provided
+  if (questions && questions.length > 0) {
+    const validQuestions = await Question.find({ _id: { $in: questions } });
+    if (validQuestions.length !== questions.length) {
+      throw ApiError.badRequest("Some questions are invalid");
+    }
+  }
+
   const quiz = await Quiz.create({
     title,
     description,
     category,
+    questions: questions || [],
     totalQuestions,
     totalMarks,
     passingMarks,
@@ -52,6 +62,9 @@ const createQuiz = asyncHandler(async (req, res) => {
     showResultsImmediately,
     createdBy: req.user._id,
   });
+
+  // Populate questions for response
+  await quiz.populate("questions", "questionText difficultyLevel points");
 
   ApiResponse.created(res, "Quiz created successfully", quiz);
 });
@@ -190,11 +203,19 @@ const updateQuiz = asyncHandler(async (req, res) => {
     throw ApiError.badRequest("Passing marks cannot exceed total marks");
   }
 
+  // Validate questions if provided
+  if (req.body.questions && req.body.questions.length > 0) {
+    const validQuestions = await Question.find({ _id: { $in: req.body.questions } });
+    if (validQuestions.length !== req.body.questions.length) {
+      throw ApiError.badRequest("Some questions are invalid");
+    }
+  }
+
   quiz = await Quiz.findByIdAndUpdate(
     req.params.id,
     req.body,
     { new: true, runValidators: true }
-  );
+  ).populate("questions", "questionText difficultyLevel points");
 
   ApiResponse.success(res, "Quiz updated successfully", quiz);
 });
