@@ -443,8 +443,8 @@ const finishAttempt = async (attempt, res, message) => {
 // @access  Private
 const getAttempt = asyncHandler(async (req, res) => {
   const attempt = await QuizAttempt.findById(req.params.attemptId)
-    .populate("quiz", "title category showResultsImmediately")
-    .populate("answers.question", "questionText options correctAnswer explanation");
+    .populate("quiz", "title category duration totalQuestions showResultsImmediately passingMarks totalMarks isAdaptive")
+    .populate("answers.question", "questionText options correctAnswer explanation difficultyLevel");
 
   if (!attempt) {
     throw ApiError.notFound("Attempt not found");
@@ -458,19 +458,40 @@ const getAttempt = asyncHandler(async (req, res) => {
     }
   }
 
+  // Calculate remaining time for in-progress attempts
+  let remainingTime = null;
+  if (attempt.status === "in-progress" && attempt.quiz.duration) {
+    const elapsed = Math.floor((Date.now() - new Date(attempt.startTime)) / 1000);
+    remainingTime = Math.max(0, (attempt.quiz.duration * 60) - elapsed);
+  }
+
   // Hide correct answers if results not shown immediately and quiz in progress
+  let sanitizedAttempt = attempt.toObject();
   if (attempt.status === "in-progress" || !attempt.quiz.showResultsImmediately) {
-    attempt.answers = attempt.answers.map((a) => ({
+    sanitizedAttempt.answers = attempt.answers.map((a) => ({
       ...a.toObject(),
       question: {
-        ...a.question.toObject(),
+        ...a.question?.toObject(),
         correctAnswer: undefined,
         explanation: undefined,
       },
     }));
   }
 
-  ApiResponse.success(res, "Attempt fetched", attempt);
+  // Add remaining time to response
+  sanitizedAttempt.remainingTime = remainingTime;
+
+  // For in-progress non-adaptive, include questions for display
+  if (attempt.status === "in-progress" && !attempt.quiz.isAdaptive) {
+    sanitizedAttempt.questions = attempt.answers.map(a => ({
+      _id: a.question?._id,
+      questionText: a.question?.questionText,
+      options: a.question?.options,
+      difficultyLevel: a.question?.difficultyLevel,
+    })).filter(q => q._id);
+  }
+
+  ApiResponse.success(res, "Attempt fetched", sanitizedAttempt);
 });
 
 // @route   GET /api/attempts/my-attempts
