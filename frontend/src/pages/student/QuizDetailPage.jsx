@@ -66,10 +66,16 @@ export default function QuizDetailPage() {
   const attempts = attemptsData?.attempts || [];
   const topScorers = leaderboard?.leaderboard?.slice(0, 5) || [];
 
-  const canAttempt = quiz && attempts.filter(a => a.status === "completed" || a.status === "abandoned").length < quiz.allowedAttempts;
+  // Only count completed/abandoned attempts for limits
+  const completedAttempts = attempts.filter(a => a.status === "completed" || a.status === "abandoned");
+  const canAttempt = quiz && completedAttempts.length < quiz.allowedAttempts;
   const hasInProgress = attempts.some(a => a.status === "in-progress");
-  const bestAttempt = attempts.reduce((best, current) => 
-    (current.score > (best?.score || 0) ? current : best), null);
+  
+  // Find best COMPLETED attempt by percentage
+  const bestAttempt = attempts
+    .filter(a => a.status === "completed")
+    .reduce((best, current) => 
+      ((current.percentage || 0) > (best?.percentage || 0) ? current : best), null);
 
   const handleStartQuiz = async () => {
     try {
@@ -213,7 +219,7 @@ export default function QuizDetailPage() {
               <CardHeader>
                 <CardTitle>My Attempts</CardTitle>
                 <CardDescription>
-                  {attempts.filter(a => a.status === "completed").length} of {quiz.allowedAttempts} attempts used
+                  {completedAttempts.length} of {quiz.allowedAttempts} attempts used
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -229,13 +235,13 @@ export default function QuizDetailPage() {
                           <div className={cn(
                             "h-10 w-10 rounded-full flex items-center justify-center",
                             attempt.status === "completed" 
-                              ? attempt.score >= quiz.passingMarks 
+                              ? attempt.isPassed 
                                 ? "bg-green-100 text-green-600"
                                 : "bg-red-100 text-red-600"
                               : "bg-yellow-100 text-yellow-600"
                           )}>
                             {attempt.status === "completed" ? (
-                              attempt.score >= quiz.passingMarks ? (
+                              attempt.isPassed ? (
                                 <CheckCircle2 className="h-5 w-5" />
                               ) : (
                                 <XCircle className="h-5 w-5" />
@@ -255,10 +261,10 @@ export default function QuizDetailPage() {
                           {attempt.status === "completed" ? (
                             <>
                               <p className="font-bold text-lg">
-                                {Math.round((attempt.score / quiz.totalMarks) * 100)}%
+                                {Math.round(attempt.percentage || 0)}%
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {attempt.score}/{quiz.totalMarks}
+                                {Math.round(attempt.score || 0)}/{attempt.totalMarks || quiz.totalMarks}
                               </p>
                             </>
                           ) : (
@@ -283,17 +289,17 @@ export default function QuizDetailPage() {
                 <div className="mb-6 text-center">
                   <p className="text-sm text-muted-foreground mb-1">Your Best Score</p>
                   <p className="text-4xl font-bold">
-                    {Math.round((bestAttempt.score / quiz.totalMarks) * 100)}%
+                    {Math.round(bestAttempt.percentage || 0)}%
                   </p>
                   <Progress 
-                    value={(bestAttempt.score / quiz.totalMarks) * 100} 
+                    value={bestAttempt.percentage || 0} 
                     className="mt-2 h-2"
                   />
                   <p className={cn(
                     "text-sm mt-2",
-                    bestAttempt.score >= quiz.passingMarks ? "text-green-600" : "text-red-600"
+                    bestAttempt.isPassed ? "text-green-600" : "text-red-600"
                   )}>
-                    {bestAttempt.score >= quiz.passingMarks ? "Passed" : "Not Passed"}
+                    {bestAttempt.isPassed ? "Passed" : "Not Passed"}
                   </p>
                 </div>
               )}
@@ -336,7 +342,7 @@ export default function QuizDetailPage() {
 
               {canAttempt && !hasInProgress && (
                 <p className="text-center text-sm text-muted-foreground mt-4">
-                  {quiz.allowedAttempts - attempts.filter(a => a.status !== "in-progress").length} attempts remaining
+                  {quiz.allowedAttempts - completedAttempts.length} attempts remaining
                 </p>
               )}
             </CardContent>
@@ -370,7 +376,7 @@ export default function QuizDetailPage() {
                         </p>
                       </div>
                       <div className="text-sm font-bold">
-                        {Math.round((entry.score / quiz.totalMarks) * 100)}%
+                        {Math.round(entry.percentage || 0)}%
                       </div>
                     </div>
                   ))}

@@ -92,10 +92,8 @@ export default function AttemptDetailPage() {
   const totalQuestions = attempt.answers?.length || 0;
   const correctAnswers = attempt.answers?.filter((a) => a.isCorrect).length || 0;
   const incorrectAnswers = totalQuestions - correctAnswers;
-  const scorePercent = quiz?.totalMarks 
-    ? Math.round((attempt.score / quiz.totalMarks) * 100) 
-    : 0;
-  const passed = attempt.score >= (quiz?.passingMarks || 0);
+  const scorePercent = Math.round(attempt.percentage || 0);
+  const passed = attempt.isPassed;
   const passingPercent = quiz?.totalMarks 
     ? Math.round((quiz.passingMarks / quiz.totalMarks) * 100) 
     : 0;
@@ -168,7 +166,7 @@ export default function AttemptDetailPage() {
                 {scorePercent}%
               </p>
               <p className="text-sm text-muted-foreground mt-1">
-                {attempt.score} / {quiz?.totalMarks} marks
+                {Math.round(attempt.score || 0)} / {attempt.totalMarks || quiz?.totalMarks} marks
               </p>
             </div>
           </div>

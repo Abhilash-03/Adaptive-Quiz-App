@@ -12,10 +12,8 @@ import { formatDateTime, formatTimeTaken } from "@/lib/utils";
 // Attempt Card for displaying quiz attempt history
 export function AttemptCard({ attempt }) {
   const quiz = attempt.quiz;
-  const scorePercent = quiz?.totalMarks 
-    ? Math.round((attempt.score / quiz.totalMarks) * 100) 
-    : 0;
-  const passed = attempt.score >= (quiz?.passingMarks || 0);
+  const scorePercent = Math.round(attempt.percentage || 0);
+  const passed = attempt.isPassed;
 
   const linkTo = attempt.status === "in-progress" 
     ? `/student/quiz/${quiz?._id}/attempt/${attempt._id}`
@@ -82,7 +80,7 @@ export function AttemptCard({ attempt }) {
                     {scorePercent}%
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {attempt.score}/{quiz?.totalMarks}
+                    {Math.round(attempt.score || 0)}/{attempt.totalMarks || quiz?.totalMarks}
                   </p>
                 </div>
                 <div className="w-24 hidden sm:block">

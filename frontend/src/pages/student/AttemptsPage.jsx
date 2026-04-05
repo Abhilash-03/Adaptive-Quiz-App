@@ -19,9 +19,9 @@ export default function AttemptsPage() {
 
   // Calculate stats
   const completedAttempts = attempts.filter(a => a.status === "completed");
-  const passedAttempts = completedAttempts.filter(a => a.score >= (a.quiz?.passingMarks || 0));
+  const passedAttempts = completedAttempts.filter(a => a.isPassed);
   const averageScore = completedAttempts.length > 0
-    ? Math.round(completedAttempts.reduce((sum, a) => sum + ((a.score / (a.quiz?.totalMarks || 1)) * 100), 0) / completedAttempts.length)
+    ? Math.round(completedAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0) / completedAttempts.length)
     : 0;
   const passRate = completedAttempts.length > 0 
     ? Math.round((passedAttempts.length / completedAttempts.length) * 100)

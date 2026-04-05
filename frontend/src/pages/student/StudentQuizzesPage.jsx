@@ -49,7 +49,7 @@ export default function StudentQuizzesPage() {
         filters={[
           {
             name: "category",
-            placeholder: "All Categories",
+            placeholder: "Categories",
             value: category,
             onChange: setCategory,
             options: categories.map((cat) => ({ value: cat, label: cat })),
