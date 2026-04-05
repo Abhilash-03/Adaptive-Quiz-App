@@ -10,6 +10,7 @@ import DashboardLayout from "@/layouts/DashboardLayout";
 // Auth Pages
 import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
+import OAuthCallbackPage from "@/pages/auth/OAuthCallbackPage";
 
 // Student Pages
 import StudentDashboard from "@/pages/student/StudentDashboard";
@@ -99,6 +100,9 @@ function App() {
               </PublicRoute>
             }
           />
+
+          {/* OAuth Callback - handles Google OAuth redirect */}
+          <Route path="/auth/callback" element={<OAuthCallbackPage />} />
 
           {/* Student Routes */}
           <Route
