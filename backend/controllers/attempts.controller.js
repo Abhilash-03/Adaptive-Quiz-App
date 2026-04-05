@@ -477,16 +477,17 @@ const getAttempt = asyncHandler(async (req, res) => {
 // @desc    Get user's attempt history
 // @access  Private (Student)
 const getMyAttempts = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 10, status } = req.query;
+  const { page = 1, limit = 10, status, quizId } = req.query;
 
   const filter = { user: req.user._id };
   if (status) filter.status = status;
+  if (quizId) filter.quiz = quizId;
 
   const skip = (page - 1) * limit;
 
   const [attempts, total] = await Promise.all([
     QuizAttempt.find(filter)
-      .populate("quiz", "title category totalQuestions")
+      .populate("quiz", "title category totalQuestions totalMarks passingMarks")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit)),

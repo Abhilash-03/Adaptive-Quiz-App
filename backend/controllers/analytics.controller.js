@@ -42,6 +42,7 @@ const getStudentDashboard = asyncHandler(async (req, res) => {
   const stats = {
     totalQuizzesTaken: allAttempts.length,
     averageScore: 0,
+    bestScore: 0,
     totalTimeSpent: 0,
     quizzesPassed: 0,
     currentStreak: analytics.currentStreak,
@@ -51,6 +52,7 @@ const getStudentDashboard = asyncHandler(async (req, res) => {
   if (allAttempts.length > 0) {
     const totalPercentage = allAttempts.reduce((sum, a) => sum + (a.percentage || 0), 0);
     stats.averageScore = Math.round(totalPercentage / allAttempts.length);
+    stats.bestScore = Math.round(Math.max(...allAttempts.map(a => a.percentage || 0)));
     stats.totalTimeSpent = allAttempts.reduce((sum, a) => sum + (a.timeSpent || 0), 0);
     stats.quizzesPassed = allAttempts.filter((a) => a.isPassed).length;
   }
