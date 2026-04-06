@@ -112,6 +112,9 @@ const startAttempt = asyncHandler(async (req, res) => {
 
   // Get first question (for adaptive) or all questions
   let response;
+  // Always send all questions for navigation, even for adaptive quizzes
+  const allQuestions = selectedQuestions.map(sanitizeQuestion);
+
   if (quiz.isAdaptive) {
     // For adaptive quiz, use AI to select best first question
     const firstQuestion = selectQuestion(
@@ -122,6 +125,7 @@ const startAttempt = asyncHandler(async (req, res) => {
     response = {
       attempt: attempt._id,
       currentQuestion: sanitizeQuestion(firstQuestion),
+      questions: allQuestions, // Include all questions for navigation
       questionNumber: 1,
       totalQuestions: quiz.totalQuestions,
       remainingTime: quiz.duration * 60,
@@ -131,7 +135,7 @@ const startAttempt = asyncHandler(async (req, res) => {
     // For non-adaptive, send all questions at once
     response = {
       attempt: attempt._id,
-      questions: selectedQuestions.map(sanitizeQuestion),
+      questions: allQuestions,
       totalQuestions: quiz.totalQuestions,
       remainingTime: quiz.duration * 60,
       isAdaptive: false,
@@ -444,7 +448,7 @@ const finishAttempt = async (attempt, res, message) => {
 const getAttempt = asyncHandler(async (req, res) => {
   const attempt = await QuizAttempt.findById(req.params.attemptId)
     .populate("quiz", "title category duration totalQuestions showResultsImmediately passingMarks totalMarks isAdaptive")
-    .populate("answers.question", "questionText options correctAnswer explanation difficultyLevel");
+    .populate("answers.question", "questionText questionType options correctAnswer explanation difficultyLevel category points");
 
   if (!attempt) {
     throw ApiError.notFound("Attempt not found");
@@ -480,15 +484,30 @@ const getAttempt = asyncHandler(async (req, res) => {
 
   // Add remaining time to response
   sanitizedAttempt.remainingTime = remainingTime;
+  sanitizedAttempt.isAdaptive = attempt.quiz.isAdaptive || false;
 
-  // For in-progress non-adaptive, include questions for display
-  if (attempt.status === "in-progress" && !attempt.quiz.isAdaptive) {
-    sanitizedAttempt.questions = attempt.answers.map(a => ({
-      _id: a.question?._id,
-      questionText: a.question?.questionText,
-      options: a.question?.options,
-      difficultyLevel: a.question?.difficultyLevel,
-    })).filter(q => q._id);
+  // For in-progress attempts, include questions for display
+  if (attempt.status === "in-progress") {
+    // Build questions array from populated answers
+    const questionsFromAnswers = attempt.answers
+      .filter(a => a.question && a.question._id)
+      .map(a => ({
+        _id: a.question._id,
+        questionText: a.question.questionText,
+        questionType: a.question.questionType || 'mcq',
+        options: a.question.options || [],
+        difficultyLevel: a.question.difficultyLevel,
+        category: a.question.category,
+        points: a.question.points || 1,
+      }));
+    
+    sanitizedAttempt.questions = questionsFromAnswers;
+    
+    // For adaptive quizzes, also track current question number
+    if (attempt.quiz.isAdaptive) {
+      const answeredCount = attempt.answers.filter(a => a.selectedAnswer).length;
+      sanitizedAttempt.questionNumber = answeredCount + 1;
+    }
   }
 
   ApiResponse.success(res, "Attempt fetched", sanitizedAttempt);
@@ -532,9 +551,15 @@ const getLeaderboard = asyncHandler(async (req, res) => {
   const { quizId } = req.params;
   const { limit = 10 } = req.query;
 
-  const leaderboard = await Score.find({ quiz: quizId })
+  // Only show passing grades (D and above, >= 50%)
+  // Exclude grades E and F
+  const leaderboard = await Score.find({ 
+    quiz: quizId,
+    grade: { $nin: ["E", "F"] }, // Exclude failing grades
+    percentage: { $gte: 50 }     // Only passing scores
+  })
     .populate("user", "fullname avatar")
-    .sort({ score: -1, timeTaken: 1 })
+    .sort({ percentage: -1, timeTaken: 1 }) // Sort by percentage first (highest first), then by time (fastest first)
     .limit(parseInt(limit));
 
   // Add rank
@@ -565,9 +590,11 @@ const sanitizeQuestion = (question) => {
   return {
     _id: question._id,
     questionText: question.questionText,
-    questionType: question.questionType,
+    questionType: question.questionType || 'mcq',
     options: question.options,
-    points: question.points,
+    points: question.points || 1,
+    category: question.category,
+    difficultyLevel: question.difficultyLevel,
     timeLimit: question.timeLimit,
     // Don't expose: correctAnswer, explanation, difficultyScore
   };
