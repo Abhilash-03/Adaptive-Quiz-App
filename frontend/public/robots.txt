@@ -1,0 +1,11 @@
+# Robots.txt for QuizAI
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://quizai-alpha.vercel.app/sitemap.xml
+
+# Disallow admin/private routes
+Disallow: /student/
+Disallow: /teacher/
+Disallow: /auth/

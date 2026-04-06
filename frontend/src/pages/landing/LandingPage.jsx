@@ -16,6 +16,7 @@ import {
 import { Button, Card, CardContent } from "@/components/ui";
 import { useAuthStore } from "@/store/authStore";
 import AuthModal from "@/components/shared/AuthModal";
+import SEO from "@/components/shared/SEO";
 import LandingHeader from "./LandingHeader";
 import LandingFooter from "./LandingFooter";
 import {
@@ -53,6 +54,7 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO />
       <LandingHeader onSignIn={() => openAuthModal("login")} onSignUp={() => openAuthModal("register")} />
 
       {/* Hero Section */}

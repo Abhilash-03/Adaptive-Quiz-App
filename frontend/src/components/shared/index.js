@@ -20,3 +20,6 @@ export { ConfirmDialog, DeleteDialog } from "./ConfirmDialog";
 
 // Auth components
 export { default as AuthModal } from "./AuthModal";
+
+// SEO components
+export { default as SEO } from "./SEO";
