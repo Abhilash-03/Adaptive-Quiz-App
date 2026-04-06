@@ -7,9 +7,10 @@ import { useAuthStore } from "@/store/authStore";
 // Layouts
 import DashboardLayout from "@/layouts/DashboardLayout";
 
+// Landing Page
+import { LandingPage } from "@/pages/landing";
+
 // Auth Pages
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
 import OAuthCallbackPage from "@/pages/auth/OAuthCallbackPage";
 
 // Student Pages
@@ -50,7 +51,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   const { isAuthenticated, user } = useAuthStore();
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/" replace />;
   }
 
   if (allowedRoles && !allowedRoles.includes(user?.role)) {
@@ -83,12 +84,22 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <Routes>
-          {/* Public Routes */}
+          {/* Landing Page */}
+          <Route
+            path="/"
+            element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            }
+          />
+
+          {/* Legacy auth routes - redirect to landing */}
           <Route
             path="/login"
             element={
               <PublicRoute>
-                <LoginPage />
+                <LandingPage />
               </PublicRoute>
             }
           />
@@ -96,7 +107,7 @@ function App() {
             path="/register"
             element={
               <PublicRoute>
-                <RegisterPage />
+                <LandingPage />
               </PublicRoute>
             }
           />
@@ -159,11 +170,8 @@ function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
           </Route>
 
-          {/* Root redirect */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          
-          {/* 404 */}
-          <Route path="*" element={<Navigate to="/login" replace />} />
+          {/* 404 - redirect to landing */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
       

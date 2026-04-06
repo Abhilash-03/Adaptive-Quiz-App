@@ -17,3 +17,6 @@ export { QuickQuestionForm } from "./QuickQuestionForm";
 
 // Dialog components
 export { ConfirmDialog, DeleteDialog } from "./ConfirmDialog";
+
+// Auth components
+export { default as AuthModal } from "./AuthModal";
