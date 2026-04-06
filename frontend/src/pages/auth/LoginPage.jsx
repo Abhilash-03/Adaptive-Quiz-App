@@ -10,6 +10,7 @@ import { useAuthStore } from "@/store/authStore";
 export default function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const logout = useAuthStore((state) => state.logout);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -44,6 +45,8 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
+    // Clear any stale auth data before starting OAuth flow
+    logout();
     window.location.href = authService.getGoogleAuthUrl();
   };
 

@@ -18,6 +18,7 @@ router.get(
   passport.authenticate("google", {
     scope: ["profile", "email"],
     session: false,
+    prompt: "select_account", // Force account picker on every login
   })
 );
 

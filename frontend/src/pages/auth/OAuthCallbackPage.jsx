@@ -33,14 +33,14 @@ export default function OAuthCallbackPage() {
       }
 
       try {
-        // Store token temporarily to make the API call
-        localStorage.setItem("token", token);
-
-        // Fetch user data with the token
-        const response = await api.get("/auth/me");
+        // Fetch user data with the NEW token directly in header
+        // (store still has old token, so we must pass it explicitly)
+        const response = await api.get("/auth/me", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         const user = response.data.data;
 
-        // Set auth state
+        // Set auth state with new user and token
         setAuth(user, token);
 
         toast.success(`Welcome back, ${user.fullname}!`);
@@ -53,7 +53,6 @@ export default function OAuthCallbackPage() {
         }
       } catch (err) {
         console.error("OAuth callback error:", err);
-        localStorage.removeItem("token");
         toast.error("Authentication failed. Please try again.");
         navigate("/login", { replace: true });
       }
