@@ -71,3 +71,12 @@ export {
   useUser,
   useToggleUserStatus,
 } from "./useUsers";
+
+// Badge hooks
+export {
+  useBadges,
+  useMyBadges,
+  useUserBadges,
+  useRecentBadges,
+  useBadgeLeaderboard,
+} from "./useBadges";

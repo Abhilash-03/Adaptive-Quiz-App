@@ -8,6 +8,14 @@ import {
   CheckCircle2,
   XCircle,
   Flag,
+  Loader2,
+  Send,
+  Brain,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import {
   Card,
@@ -53,6 +61,13 @@ export default function TakeQuizPage() {
   const [remainingTime, setRemainingTime] = useState(null);
   const [showFeedback, setShowFeedback] = useState(null);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [difficultyChange, setDifficultyChange] = useState(null); // 'up', 'down', 'same'
+  const [_previousDifficulty, setPreviousDifficulty] = useState(null);
+  const [correctStreak, setCorrectStreak] = useState(0);
+  const [incorrectStreak, setIncorrectStreak] = useState(0);
+  const [aiTargetDifficulty, setAiTargetDifficulty] = useState(null); // AI's calculated target (1-100)
+  const [hasLimitedQuestions, setHasLimitedQuestions] = useState(false); // True if AI can't find ideal difficulty
   const questionStartTimeRef = useRef(null);
   const remainingTimeInitializedRef = useRef(false);
 
@@ -89,9 +104,12 @@ export default function TakeQuizPage() {
     return [];
   }, [attemptData]);
 
-  // Use adaptive mode ONLY if we don't have all questions available
+  // Check if quiz is marked as adaptive (for UI display purposes)
+  const isAdaptiveQuiz = attemptData?.isAdaptive ?? quiz?.isAdaptive ?? false;
+  
+  // Use adaptive flow ONLY if we don't have all questions available
   // If backend sends all questions, use normal navigation regardless of isAdaptive flag
-  const useAdaptiveMode = questions.length === 0 && (attemptData?.isAdaptive ?? quiz?.isAdaptive ?? false);
+  const useAdaptiveMode = questions.length === 0 && isAdaptiveQuiz;
   
   const totalQuestions = quiz?.totalQuestions || attemptData?.totalQuestions || questions.length;
   const currentQ = useAdaptiveMode
@@ -110,6 +128,8 @@ export default function TakeQuizPage() {
         setShowSubmitDialog(false);
       }
 
+      setIsSubmitting(true);
+
       try {
         // Prepare answers array
         const answersArray = questions.map((q, idx) => ({
@@ -123,8 +143,11 @@ export default function TakeQuizPage() {
           answers: answersArray,
         });
 
+        // Small delay to show success state
+        await new Promise(resolve => setTimeout(resolve, 500));
         navigate(`/student/attempt/${attemptId}`, { replace: true });
       } catch {
+        setIsSubmitting(false);
         // Error handled in mutation
       }
     },
@@ -220,6 +243,9 @@ export default function TakeQuizPage() {
       (Date.now() - (questionStartTimeRef.current || Date.now())) / 1000,
     );
 
+    // Store current difficulty before submitting
+    const currentDifficulty = currentQuestion.difficultyLevel;
+
     try {
       const result = await submitAnswer.mutateAsync({
         attemptId,
@@ -230,12 +256,29 @@ export default function TakeQuizPage() {
         },
       });
 
+      // Update streaks
+      if (result.isCorrect) {
+        setCorrectStreak(prev => prev + 1);
+        setIncorrectStreak(0);
+      } else {
+        setIncorrectStreak(prev => prev + 1);
+        setCorrectStreak(0);
+      }
+
       // Show feedback
       setShowFeedback({
         isCorrect: result.isCorrect,
         correctAnswer: result.correctAnswer,
         explanation: result.explanation,
       });
+
+      // Update AI difficulty tracking
+      if (result.targetDifficulty !== undefined) {
+        setAiTargetDifficulty(result.targetDifficulty);
+      }
+      if (result.hasLimitedQuestions !== undefined) {
+        setHasLimitedQuestions(result.hasLimitedQuestions);
+      }
 
       // Wait a moment then move to next question
       setTimeout(() => {
@@ -244,6 +287,27 @@ export default function TakeQuizPage() {
         questionStartTimeRef.current = Date.now();
 
         if (result.nextQuestion) {
+          // Detect difficulty change based on AI target
+          const nextDifficulty = result.nextQuestion.difficultyLevel;
+          const difficultyOrder = { easy: 1, medium: 2, hard: 3 };
+          const currentLevel = difficultyOrder[currentDifficulty] || 2;
+          const nextLevel = difficultyOrder[nextDifficulty] || 2;
+
+          if (nextLevel > currentLevel) {
+            setDifficultyChange('up');
+          } else if (nextLevel < currentLevel) {
+            setDifficultyChange('down');
+          } else if (result.targetDifficulty > result.actualDifficulty + 10) {
+            // AI wanted harder but couldn't find it - still show "up" intent
+            setDifficultyChange('up');
+          } else {
+            setDifficultyChange('same');
+          }
+          setPreviousDifficulty(currentDifficulty);
+
+          // Clear difficulty change notification after 3 seconds
+          setTimeout(() => setDifficultyChange(null), 3000);
+
           setCurrentQuestion(result.nextQuestion);
           setAnsweredCount(result.questionNumber - 1);
         } else {
@@ -308,34 +372,145 @@ export default function TakeQuizPage() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      {/* Difficulty Change Notification */}
+      {isAdaptiveQuiz && difficultyChange && (
+        <div className={cn(
+          "fixed top-20 left-1/2 -translate-x-1/2 z-60 px-6 py-3 rounded-full shadow-lg animate-slideDown flex items-center gap-3",
+          difficultyChange === 'up' 
+            ? "bg-linear-to-r from-orange-500 to-red-500 text-white"
+            : difficultyChange === 'down'
+              ? "bg-linear-to-r from-green-500 to-emerald-500 text-white"
+              : "bg-linear-to-r from-blue-500 to-primary text-white"
+        )}>
+          {difficultyChange === 'up' ? (
+            <>
+              <TrendingUp className="h-5 w-5" />
+              <span className="font-medium">Difficulty Increased! Great job!</span>
+              <Sparkles className="h-4 w-4" />
+            </>
+          ) : difficultyChange === 'down' ? (
+            <>
+              <TrendingDown className="h-5 w-5" />
+              <span className="font-medium">Difficulty Adjusted - Keep going!</span>
+            </>
+          ) : (
+            <>
+              <Minus className="h-5 w-5" />
+              <span className="font-medium">Same Level - Stay focused!</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Header */}
       <div className="sticky top-0 z-50 bg-card border-b">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="font-semibold">{quiz?.title}</h1>
-            <p className="text-sm text-muted-foreground">
-              Question{" "}
-              {useAdaptiveMode ? answeredCount + 1 : currentQuestionIndex + 1} of{" "}
-              {totalQuestions}
-            </p>
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-semibold">{quiz?.title}</h1>
+                {isAdaptiveQuiz && (
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-linear-to-r from-primary/20 to-violet-500/20 border border-primary/30">
+                    <Brain className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-medium text-primary">AI Adaptive</span>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Question{" "}
+                {useAdaptiveMode ? answeredCount + 1 : currentQuestionIndex + 1} of{" "}
+                {totalQuestions}
+              </p>
+            </div>
+
+            {/* Timer */}
+            <div
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg",
+                remainingTime < 60
+                  ? "bg-red-100 text-red-700"
+                  : remainingTime < 300
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-primary/10 text-primary",
+              )}
+            >
+              <Clock className="h-5 w-5" />
+              <span className="font-mono font-bold text-lg">
+                {formatTime(remainingTime || 0)}
+              </span>
+            </div>
           </div>
 
-          {/* Timer */}
-          <div
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg",
-              remainingTime < 60
-                ? "bg-red-100 text-red-700"
-                : remainingTime < 300
-                  ? "bg-yellow-100 text-yellow-700"
-                  : "bg-primary/10 text-primary",
-            )}
-          >
-            <Clock className="h-5 w-5" />
-            <span className="font-mono font-bold text-lg">
-              {formatTime(remainingTime || 0)}
-            </span>
-          </div>
+          {/* Difficulty Meter */}
+          {currentQ?.difficultyLevel && (
+            <div className="mt-3 p-3 rounded-lg bg-linear-to-r from-muted/50 to-muted/30 border border-border/50">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Current Difficulty</span>
+                  {isAdaptiveQuiz && aiTargetDifficulty !== null && (
+                    <span className="text-xs text-muted-foreground">
+                      (AI Target: {aiTargetDifficulty <= 33 ? 'Easy' : aiTargetDifficulty <= 66 ? 'Medium' : 'Hard'})
+                    </span>
+                  )}
+                </div>
+                {isAdaptiveQuiz && (
+                  <div className="flex items-center gap-2">
+                    {correctStreak >= 2 && (
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        {correctStreak} correct streak!
+                      </span>
+                    )}
+                    {incorrectStreak >= 2 && (
+                      <span className="text-xs text-orange-600 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Keep trying!
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {['easy', 'medium', 'hard'].map((level) => (
+                  <div
+                    key={level}
+                    className={cn(
+                      "flex-1 h-2 rounded-full transition-all duration-500",
+                      currentQ.difficultyLevel === level
+                        ? level === 'easy'
+                          ? "bg-green-500"
+                          : level === 'medium'
+                            ? "bg-yellow-500"
+                            : "bg-red-500"
+                        : "bg-muted"
+                    )}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className={cn(
+                  "text-xs",
+                  currentQ.difficultyLevel === 'easy' ? "text-green-600 font-medium" : "text-muted-foreground"
+                )}>Easy</span>
+                <span className={cn(
+                  "text-xs",
+                  currentQ.difficultyLevel === 'medium' ? "text-yellow-600 font-medium" : "text-muted-foreground"
+                )}>Medium</span>
+                <span className={cn(
+                  "text-xs",
+                  currentQ.difficultyLevel === 'hard' ? "text-red-600 font-medium" : "text-muted-foreground"
+                )}>Hard</span>
+              </div>
+              {/* Warning when AI can't find ideal difficulty */}
+              {isAdaptiveQuiz && hasLimitedQuestions && (
+                <div className="mt-2 text-xs text-amber-600 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  <span>Limited question variety - AI found closest match</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Progress */}
@@ -358,16 +533,21 @@ export default function TakeQuizPage() {
                     {currentQ.points || 1}{" "}
                     {currentQ.points === 1 ? "point" : "points"}
                   </Badge>
-                  {useAdaptiveMode && currentQ.difficultyLevel && (
+                  {currentQ.difficultyLevel && (
                     <Badge
                       className={cn(
+                        "transition-all duration-300",
                         currentQ.difficultyLevel === "easy"
-                          ? "bg-green-100 text-green-700"
+                          ? "bg-green-100 text-green-700 border-green-300"
                           : currentQ.difficultyLevel === "medium"
-                            ? "bg-yellow-100 text-yellow-700"
-                            : "bg-red-100 text-red-700",
+                            ? "bg-yellow-100 text-yellow-700 border-yellow-300"
+                            : "bg-red-100 text-red-700 border-red-300",
+                        isAdaptiveQuiz && difficultyChange && "animate-pulse"
                       )}
                     >
+                      {currentQ.difficultyLevel === 'easy' && '🟢 '}
+                      {currentQ.difficultyLevel === 'medium' && '🟡 '}
+                      {currentQ.difficultyLevel === 'hard' && '🔴 '}
                       {currentQ.difficultyLevel}
                     </Badge>
                   )}
@@ -651,12 +831,58 @@ export default function TakeQuizPage() {
             >
               {submitQuiz.isPending ? (
                 <Spinner className="mr-2" size="sm" />
-              ) : null}
+              ) : (
+                <Send className="mr-2 h-4 w-4" />
+              )}
               Submit Quiz
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Submission Overlay */}
+      {isSubmitting && (
+        <div className="fixed inset-0 z-100 bg-background/95 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center p-8 max-w-md mx-auto">
+            <div className="relative mb-6">
+              <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
+              </div>
+              <div className="absolute inset-0 w-20 h-20 mx-auto rounded-full border-4 border-primary/20 border-t-primary animate-spin" style={{ animationDuration: '1.5s' }} />
+            </div>
+            
+            <h2 className="text-2xl font-bold mb-2">Submitting Your Quiz</h2>
+            <p className="text-muted-foreground mb-6">
+              Please wait while we process your answers...
+            </p>
+            
+            <div className="space-y-3">
+              <div className="flex items-center gap-3 text-sm">
+                <div className="w-5 h-5 rounded-full bg-green-500/20 flex items-center justify-center">
+                  <CheckCircle2 className="w-3 h-3 text-green-500" />
+                </div>
+                <span className="text-muted-foreground">Answers collected</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm">
+                <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Loader2 className="w-3 h-3 text-primary animate-spin" />
+                </div>
+                <span>Processing submission...</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm opacity-50">
+                <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-muted-foreground" />
+                </div>
+                <span className="text-muted-foreground">Calculating results</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-6">
+              Do not close this page
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

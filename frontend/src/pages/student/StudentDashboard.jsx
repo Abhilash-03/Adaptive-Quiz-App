@@ -6,11 +6,12 @@ import {
   TrendingUp, 
   Clock, 
   ChevronRight,
-  Play
+  Play,
+  Award
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, Badge, Button, Spinner } from "@/components/ui";
-import { PageHeader, StatsCard, StatsGrid } from "@/components/shared";
-import { useStudentDashboard, useAvailableQuizzes } from "@/hooks";
+import { PageHeader, StatsCard, StatsGrid, BadgeShowcase, BadgeStats } from "@/components/shared";
+import { useStudentDashboard, useAvailableQuizzes, useMyBadges } from "@/hooks";
 import { useAuthStore } from "@/store/authStore";
 import { formatDate, getGradeColor } from "@/lib/utils";
 
@@ -18,6 +19,7 @@ export default function StudentDashboard() {
   const user = useAuthStore((state) => state.user);
   const { data: dashboard, isLoading } = useStudentDashboard();
   const { data: quizzesData } = useAvailableQuizzes({ limit: 5 });
+  const { data: badgesData } = useMyBadges();
 
   if (isLoading) {
     return (
@@ -28,6 +30,9 @@ export default function StudentDashboard() {
   }
 
   const availableQuizzes = quizzesData?.quizzes || [];
+  const earnedBadges = badgesData?.earned || [];
+  const availableBadges = badgesData?.available || [];
+  const badgeStats = badgesData?.stats || { total: 0 };
 
   return (
     <div className="space-y-6">
@@ -69,13 +74,36 @@ export default function StudentDashboard() {
           iconBgColor="bg-green-100"
         />
         <StatsCard
-          title="Best Score"
-          value={`${Math.round(dashboard?.stats?.bestScore || 0)}%`}
-          icon={Trophy}
+          title="Badges Earned"
+          value={badgeStats.total}
+          icon={Award}
           iconColor="text-yellow-500"
           iconBgColor="bg-yellow-100"
         />
       </StatsGrid>
+
+      {/* Achievement Badges */}
+      <Card>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Trophy className="h-5 w-5 text-yellow-500" />
+            Achievement Badges
+          </CardTitle>
+          <BadgeStats stats={badgeStats} />
+        </CardHeader>
+        <CardContent>
+          <BadgeShowcase 
+            earned={earnedBadges} 
+            available={availableBadges} 
+            maxDisplay={10} 
+          />
+          {earnedBadges.length === 0 && (
+            <p className="text-center text-muted-foreground mt-4">
+              Complete quizzes to earn achievement badges!
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Available Quizzes */}
@@ -97,20 +125,27 @@ export default function StudentDashboard() {
                   <Link
                     key={quiz._id}
                     to={`/student/quiz/${quiz._id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border hover:bg-accent transition-colors"
                   >
-                    <div className="flex-1">
-                      <h4 className="font-medium">{quiz.title}</h4>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-medium truncate">{quiz.title}</h4>
+                        <Badge variant={quiz.isAdaptive ? "default" : "secondary"} className="sm:hidden shrink-0">
+                          {quiz.isAdaptive ? "Adaptive" : "Standard"}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground mt-1">
                         <span>{quiz.category}</span>
-                        <span>•</span>
+                        <span className="hidden sm:inline">•</span>
                         <span>{quiz.totalQuestions} questions</span>
-                        <span>•</span>
-                        <Clock className="h-3 w-3" />
-                        <span>{quiz.duration} min</span>
+                        <span className="hidden sm:inline">•</span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {quiz.duration} min
+                        </span>
                       </div>
                     </div>
-                    <Badge variant={quiz.isAdaptive ? "default" : "secondary"}>
+                    <Badge variant={quiz.isAdaptive ? "default" : "secondary"} className="hidden sm:inline-flex shrink-0">
                       {quiz.isAdaptive ? "Adaptive" : "Standard"}
                     </Badge>
                   </Link>
@@ -139,15 +174,15 @@ export default function StudentDashboard() {
                   <Link
                     key={attempt._id}
                     to={`/student/attempt/${attempt._id}`}
-                    className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors"
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg border hover:bg-accent transition-colors"
                   >
-                    <div>
-                      <h4 className="font-medium">{attempt.quiz?.title || "Quiz"}</h4>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium truncate">{attempt.quiz?.title || "Quiz"}</h4>
                       <p className="text-sm text-muted-foreground">
                         {formatDate(attempt.completedAt || attempt.createdAt)}
                       </p>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                       <p className={`font-bold ${getGradeColor(attempt.percentage || 0)}`}>
                         {Math.round(attempt.percentage || 0)}%
                       </p>

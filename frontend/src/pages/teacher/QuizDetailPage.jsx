@@ -106,58 +106,60 @@ export default function TeacherQuizDetailPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline">{quiz.category}</Badge>
-            <Badge variant={quiz.isPublished ? "default" : "secondary"}>
-              {quiz.isPublished ? (
-                <>
-                  <Globe className="mr-1 h-3 w-3" />
-                  Published
-                </>
-              ) : (
-                <>
-                  <Lock className="mr-1 h-3 w-3" />
-                  Draft
-                </>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-center gap-4 flex-1">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{quiz.category}</Badge>
+              <Badge variant={quiz.isPublished ? "default" : "secondary"}>
+                {quiz.isPublished ? (
+                  <>
+                    <Globe className="mr-1 h-3 w-3" />
+                    Published
+                  </>
+                ) : (
+                  <>
+                    <Lock className="mr-1 h-3 w-3" />
+                    Draft
+                  </>
+                )}
+              </Badge>
+              {quiz.isAdaptive && (
+                <Badge variant="secondary">Adaptive</Badge>
               )}
-            </Badge>
-            {quiz.isAdaptive && (
-              <Badge variant="secondary">Adaptive</Badge>
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold mt-1 truncate">{quiz.title}</h1>
+            {quiz.description && (
+              <p className="text-muted-foreground mt-1 line-clamp-2">{quiz.description}</p>
             )}
           </div>
-          <h1 className="text-2xl font-bold mt-1">{quiz.title}</h1>
-          {quiz.description && (
-            <p className="text-muted-foreground mt-1">{quiz.description}</p>
-          )}
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleTogglePublish}>
+        <div className="flex items-center gap-2 ml-12 sm:ml-0">
+          <Button variant="outline" size="icon" className="sm:w-auto sm:h-auto sm:px-4 sm:py-2" onClick={handleTogglePublish}>
             {quiz.isPublished ? (
               <>
-                <Lock className="mr-2 h-4 w-4" />
-                Unpublish
+                <Lock className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Unpublish</span>
               </>
             ) : (
               <>
-                <Globe className="mr-2 h-4 w-4" />
-                Publish
+                <Globe className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Publish</span>
               </>
             )}
           </Button>
           <Link to={`/teacher/quiz/${quizId}/edit`}>
-            <Button variant="outline">
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
+            <Button variant="outline" size="icon" className="sm:w-auto sm:h-auto sm:px-4 sm:py-2">
+              <Edit className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Edit</span>
             </Button>
           </Link>
-          <Button variant="destructive" onClick={() => setDeleteDialog(true)}>
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
+          <Button variant="destructive" size="icon" className="sm:w-auto sm:h-auto sm:px-4 sm:py-2" onClick={() => setDeleteDialog(true)}>
+            <Trash2 className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Delete</span>
           </Button>
         </div>
       </div>

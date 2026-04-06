@@ -10,7 +10,8 @@ import {
   FileQuestion,
   ChevronDown,
   ChevronUp,
-  RefreshCw
+  RefreshCw,
+  Award
 } from "lucide-react";
 import {
   Card,
@@ -23,7 +24,8 @@ import {
   Spinner,
   Progress,
 } from "@/components/ui";
-import { useAttempt, useQuiz } from "@/hooks";
+import { BadgeGrid } from "@/components/shared";
+import { useAttempt, useQuiz, useRecentBadges } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
@@ -59,6 +61,7 @@ export default function AttemptDetailPage() {
   const quiz = attempt?.quiz;
 
   const { data: fullQuiz } = useQuiz(quiz?._id);
+  const { data: recentBadges } = useRecentBadges(1); // Get badges earned today
 
   const [expandedQuestions, setExpandedQuestions] = useState({});
 
@@ -432,6 +435,21 @@ export default function AttemptDetailPage() {
                     </span>
                   </div>
                 ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Badges Earned */}
+          {recentBadges && recentBadges.length > 0 && (
+            <Card className="border-yellow-200 bg-yellow-50/50 dark:border-yellow-800 dark:bg-yellow-950/20">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
+                  <Award className="h-5 w-5" />
+                  Badges Earned!
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BadgeGrid badges={recentBadges} size="md" />
               </CardContent>
             </Card>
           )}

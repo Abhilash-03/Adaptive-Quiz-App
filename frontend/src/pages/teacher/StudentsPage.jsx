@@ -161,43 +161,45 @@ export default function StudentsPage() {
           <div className="space-y-3">
           {students.map((student) => (
             <Card key={student._id} className={cn("p-4", isFetching && "opacity-60")}>
-              <div className="flex items-center gap-4">
-                <Avatar className="h-12 w-12">
-                  {student.avatar && (
-                    <AvatarImage src={student.avatar} alt={student.fullname} />
-                  )}
-                  <AvatarFallback className="bg-primary/10 text-primary">
-                    {getInitials(student.fullname)}
-                  </AvatarFallback>
-                </Avatar>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <Avatar className="h-10 w-10 sm:h-12 sm:w-12 shrink-0">
+                    {student.avatar && (
+                      <AvatarImage src={student.avatar} alt={student.fullname} />
+                    )}
+                    <AvatarFallback className="bg-primary/10 text-primary">
+                      {getInitials(student.fullname)}
+                    </AvatarFallback>
+                  </Avatar>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-medium truncate">{student.fullname}</h3>
-                    <Badge
-                      variant={student.isActive ? "default" : "secondary"}
-                      className={cn(
-                        "text-xs",
-                        student.isActive
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-                          : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
-                      )}
-                    >
-                      {student.isActive ? "Active" : "Inactive"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Mail className="h-3.5 w-3.5" />
-                      {student.email}
-                    </span>
-                    <span>
-                      Joined {formatDistanceToNow(new Date(student.createdAt), { addSuffix: true })}
-                    </span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className="font-medium truncate">{student.fullname}</h3>
+                      <Badge
+                        variant={student.isActive ? "default" : "secondary"}
+                        className={cn(
+                          "text-xs",
+                          student.isActive
+                            ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                            : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                        )}
+                      >
+                        {student.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1 truncate">
+                        <Mail className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{student.email}</span>
+                      </span>
+                      <span className="hidden sm:inline">
+                        Joined {formatDistanceToNow(new Date(student.createdAt), { addSuffix: true })}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 ml-14 sm:ml-0">
                   <Button
                     variant="outline"
                     size="sm"

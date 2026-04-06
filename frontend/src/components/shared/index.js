@@ -9,6 +9,13 @@ export { ScoreDisplay, AttemptStatusIcon, AttemptStatusCircle } from "./ScoreDis
 export { StudentQuizCard, TeacherQuizCard } from "./QuizCard";
 export { AttemptCard } from "./AttemptCard";
 export { NotificationCard, NotificationList } from "./NotificationCard";
+export {
+  AchievementBadge,
+  BadgeGrid,
+  BadgeShowcase,
+  BadgeStats,
+  NewBadgePopup,
+} from "./AchievementBadge";
 
 // Question components
 export { QuestionBrowser } from "./QuestionBrowser";
