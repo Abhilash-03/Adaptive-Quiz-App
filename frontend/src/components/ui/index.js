@@ -84,5 +84,5 @@ export {
 } from "./tooltip";
 
 // Custom components
-export { Spinner, LoadingScreen, LoadingOverlay } from "./spinner";
+export { Spinner, LoadingScreen, LoadingOverlay } from "./Spinner";
 export { EmptyState } from "./empty-state";
