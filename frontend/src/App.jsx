@@ -104,6 +104,16 @@ function App() {
           {/* OAuth Callback - handles Google OAuth redirect */}
           <Route path="/auth/callback" element={<OAuthCallbackPage />} />
 
+          {/* Full-screen Quiz Taking */}
+          <Route
+            path="/student/quiz/:quizId/attempt/:attemptId"
+            element={
+              <ProtectedRoute allowedRoles={["student"]}>
+                <TakeQuizPage />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Student Routes */}
           <Route
             path="/student"
@@ -116,7 +126,6 @@ function App() {
             <Route path="dashboard" element={<StudentDashboard />} />
             <Route path="quizzes" element={<StudentQuizzesPage />} />
             <Route path="quiz/:quizId" element={<QuizDetailPage />} />
-            <Route path="quiz/:quizId/attempt/:attemptId" element={<TakeQuizPage />} />
             <Route path="attempts" element={<AttemptsPage />} />
             <Route path="attempt/:attemptId" element={<AttemptDetailPage />} />
             <Route path="notifications" element={<StudentNotificationsPage />} />
