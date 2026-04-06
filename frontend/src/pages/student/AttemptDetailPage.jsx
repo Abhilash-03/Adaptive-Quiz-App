@@ -153,7 +153,7 @@ export default function AttemptDetailPage() {
                 )}>
                   {passed 
                     ? "You passed this quiz!" 
-                    : `You need ${quiz?.passingMarks - attempt.score} more marks to pass`}
+                    : `You need ${Math.max(0, Math.round((quiz?.passingMarks || 0) - (attempt.score || 0)))} more marks to pass`}
                 </p>
               </div>
             </div>
@@ -203,7 +203,7 @@ export default function AttemptDetailPage() {
                 <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto">
                   <Clock className="h-6 w-6 text-blue-600" />
                 </div>
-                <p className="text-2xl font-bold mt-2">{formatDuration(attempt.timeTaken)}</p>
+                <p className="text-2xl font-bold mt-2">{formatDuration(attempt.timeSpent)}</p>
                 <p className="text-sm text-muted-foreground">Time Taken</p>
               </CardContent>
             </Card>
@@ -282,30 +282,82 @@ export default function AttemptDetailPage() {
                       <div className="px-4 pb-4 pt-0 border-t bg-muted/30">
                         <div className="pt-4 space-y-3">
                           {/* Options (for MCQ) */}
-                          {question?.options?.map((option, optIdx) => (
-                            <div
-                              key={optIdx}
-                              className={cn(
-                                "p-3 rounded-lg text-sm",
-                                option === question.correctAnswer && "bg-green-100 text-green-800",
-                                option === answer.selectedAnswer && option !== question.correctAnswer && "bg-red-100 text-red-800",
-                                option !== question.correctAnswer && option !== answer.selectedAnswer && "bg-muted"
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                {option === question.correctAnswer && (
-                                  <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                          {question?.options?.length > 0 && question?.questionType !== "true-false" && question?.questionType !== "short-answer" && (
+                            question.options.map((option, optIdx) => (
+                              <div
+                                key={optIdx}
+                                className={cn(
+                                  "p-3 rounded-lg text-sm",
+                                  option === question.correctAnswer && "bg-green-100 text-green-800",
+                                  option === answer.selectedAnswer && option !== question.correctAnswer && "bg-red-100 text-red-800",
+                                  option !== question.correctAnswer && option !== answer.selectedAnswer && "bg-muted"
                                 )}
-                                {option === answer.selectedAnswer && option !== question.correctAnswer && (
-                                  <XCircle className="h-4 w-4 text-red-600 shrink-0" />
-                                )}
-                                <span>{option}</span>
+                              >
+                                <div className="flex items-center gap-2">
+                                  {option === question.correctAnswer && (
+                                    <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                                  )}
+                                  {option === answer.selectedAnswer && option !== question.correctAnswer && (
+                                    <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+                                  )}
+                                  <span>{option}</span>
+                                </div>
+                              </div>
+                            ))
+                          )}
+
+                          {/* For True/False */}
+                          {question?.questionType === "true-false" && (
+                            <div className="space-y-2">
+                              {["true", "false"].map((value) => (
+                                <div
+                                  key={value}
+                                  className={cn(
+                                    "p-3 rounded-lg text-sm capitalize",
+                                    value === question.correctAnswer?.toLowerCase() && "bg-green-100 text-green-800",
+                                    value === answer.selectedAnswer?.toLowerCase() && value !== question.correctAnswer?.toLowerCase() && "bg-red-100 text-red-800",
+                                    value !== question.correctAnswer?.toLowerCase() && value !== answer.selectedAnswer?.toLowerCase() && "bg-muted"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    {value === question.correctAnswer?.toLowerCase() && (
+                                      <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" />
+                                    )}
+                                    {value === answer.selectedAnswer?.toLowerCase() && value !== question.correctAnswer?.toLowerCase() && (
+                                      <XCircle className="h-4 w-4 text-red-600 shrink-0" />
+                                    )}
+                                    <span>{value}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* For Short Answer */}
+                          {question?.questionType === "short-answer" && (
+                            <div className="space-y-3">
+                              <div className="p-3 rounded-lg bg-muted">
+                                <p className="text-xs text-muted-foreground mb-1">Your Answer</p>
+                                <p className={cn(
+                                  "text-sm font-medium",
+                                  answer.isCorrect ? "text-green-600" : "text-red-600"
+                                )}>
+                                  {answer.selectedAnswer || <span className="italic text-muted-foreground">No answer provided</span>}
+                                </p>
+                              </div>
+                              <div className="p-3 rounded-lg bg-green-100">
+                                <p className="text-xs text-green-700 mb-1">Correct Answer</p>
+                                <p className="text-sm font-medium text-green-800">
+                                  {question.correctAnswer}
+                                </p>
                               </div>
                             </div>
-                          ))}
+                          )}
 
-                          {/* For True/False or Short Answer */}
-                          {!question?.options && (
+                          {/* Fallback for unknown question types without options */}
+                          {(!question?.options || question.options.length === 0) && 
+                           question?.questionType !== "true-false" && 
+                           question?.questionType !== "short-answer" && (
                             <div className="space-y-2">
                               <p className="text-sm">
                                 <span className="text-muted-foreground">Your answer:</span>{" "}
@@ -385,16 +437,16 @@ export default function AttemptDetailPage() {
           )}
 
           {/* Actions */}
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {fullQuiz && (
-              <Link to={`/student/quiz/${quiz._id}`}>
+              <Link to={`/student/quiz/${quiz._id}`} className="block">
                 <Button variant="outline" className="w-full">
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Try Again
                 </Button>
               </Link>
             )}
-            <Link to="/student/quizzes">
+            <Link to="/student/quizzes" className="block">
               <Button variant="outline" className="w-full">
                 <FileQuestion className="mr-2 h-4 w-4" />
                 More Quizzes

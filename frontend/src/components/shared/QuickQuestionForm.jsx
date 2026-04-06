@@ -118,7 +118,9 @@ export function QuickQuestionForm({ onClose, onSuccess }) {
     }
 
     try {
-      const newQuestion = await createQuestion.mutateAsync(submitData);
+      const response = await createQuestion.mutateAsync(submitData);
+      // Extract the actual question from API response { success, message, data }
+      const newQuestion = response.data || response;
       onSuccess?.(newQuestion);
       onClose();
     } catch {

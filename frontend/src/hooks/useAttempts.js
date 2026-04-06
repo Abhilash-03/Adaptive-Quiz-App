@@ -31,6 +31,9 @@ export function useAttempt(attemptId, options = {}) {
     queryFn: () => attemptService.getAttempt(attemptId),
     select: (data) => data.data,
     enabled: !!attemptId,
+    staleTime: 30000, // Keep cached data for 30 seconds without refetch
+    gcTime: 60000, // Keep in cache for 1 minute
+    refetchOnMount: false, // Don't refetch when component mounts if data exists
     ...options,
   });
 }
@@ -54,12 +57,24 @@ export function useStartAttempt() {
   return useMutation({
     mutationFn: attemptService.startAttempt,
     onSuccess: (data, quizId) => {
-      const attemptId = data.data?.attempt?._id || data.data?.attempt || data.data?._id;
+      const responseData = data.data;
+      const attemptId = responseData?.attempt?._id || responseData?.attempt || responseData?._id;
+      
+      // Cache the start response wrapped in { data: ... } so select function works
+      // Add status: 'in-progress' since this is a new/resumed attempt
+      queryClient.setQueryData(attemptKeys.detail(attemptId), {
+        data: {
+          ...responseData,
+          status: 'in-progress',
+          _id: attemptId,
+        }
+      });
+      
       queryClient.invalidateQueries({ queryKey: attemptKeys.myAttempts({}) });
       toast.success("Quiz started! Good luck!");
       // Navigate to the quiz taking page
       navigate(`/student/quiz/${quizId}/attempt/${attemptId}`);
-      return data.data;
+      return responseData;
     },
     onError: (error) => {
       toast.error(error.message || "Failed to start quiz");
@@ -96,7 +111,6 @@ export function useSubmitAnswer() {
 // Submit quiz (finish attempt) mutation
 export function useSubmitQuiz() {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
 
   return useMutation({
     mutationFn: ({ attemptId, answers }) => attemptService.submitQuiz(attemptId, answers),

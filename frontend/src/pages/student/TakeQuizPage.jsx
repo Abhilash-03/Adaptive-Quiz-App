@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, startTransition } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { 
+import {
   Clock,
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
   CheckCircle2,
   XCircle,
-  Flag
+  Flag,
 } from "lucide-react";
 import {
   Card,
@@ -27,6 +27,7 @@ import {
   DialogTitle,
   Alert,
   AlertDescription,
+  Textarea,
 } from "@/components/ui";
 import { useAttempt, useSubmitAnswer, useSubmitQuiz } from "@/hooks";
 import { cn } from "@/lib/utils";
@@ -41,7 +42,7 @@ export default function TakeQuizPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
 
-  const { data: attemptData, isLoading } = useAttempt(attemptId);
+  const { data: attemptData, isLoading, isFetching } = useAttempt(attemptId);
   const submitAnswer = useSubmitAnswer();
   const submitQuiz = useSubmitQuiz();
 
@@ -53,49 +54,82 @@ export default function TakeQuizPage() {
   const [showFeedback, setShowFeedback] = useState(null);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const questionStartTimeRef = useRef(null);
+  const remainingTimeInitializedRef = useRef(false);
 
   // For adaptive quizzes
   const [currentQuestion, setCurrentQuestion] = useState(null);
   const [answeredCount, setAnsweredCount] = useState(0);
 
-  const attempt = attemptData?.attempt || attemptData;
+  // attemptData contains the response - either from startAttempt or getAttempt
+  // Start response: { attempt: \"id\", questions: [...], quiz: {...}, isAdaptive, ... }
+  // GetAttempt response: { _id: \"id\", quiz: {...}, answers: [...], questions: [...], isAdaptive, ... }
+  const attempt = attemptData;
   const quiz = attempt?.quiz;
-  const isAdaptive = quiz?.isAdaptive;
 
-  // Get questions for non-adaptive
-  const questions = !isAdaptive ? (attemptData?.questions || attempt?.answers?.map(a => a.question).filter(Boolean) || []) : [];
-  const totalQuestions = quiz?.totalQuestions || questions.length;
-  const currentQ = isAdaptive ? currentQuestion : questions[currentQuestionIndex];
+  // Get questions from response - always try to extract them
+  // Use attemptData directly as dependency to ensure fresh computation
+  const questions = useMemo(() => {
+    if (!attemptData) return [];
+    
+    // Priority: explicit questions array
+    if (attemptData.questions && attemptData.questions.length > 0) {
+      return attemptData.questions;
+    }
+    
+    // Fallback: extract from answers array
+    if (attemptData.answers) {
+      const fromAnswers = attemptData.answers
+        .map((a) => a.question)
+        .filter((q) => q && q._id && q.questionText);
+      if (fromAnswers.length > 0) {
+        return fromAnswers;
+      }
+    }
+    
+    return [];
+  }, [attemptData]);
+
+  // Use adaptive mode ONLY if we don't have all questions available
+  // If backend sends all questions, use normal navigation regardless of isAdaptive flag
+  const useAdaptiveMode = questions.length === 0 && (attemptData?.isAdaptive ?? quiz?.isAdaptive ?? false);
+  
+  const totalQuestions = quiz?.totalQuestions || attemptData?.totalQuestions || questions.length;
+  const currentQ = useAdaptiveMode
+    ? currentQuestion
+    : questions[currentQuestionIndex];
 
   // Count answered
-  const answeredQuestionsCount = isAdaptive 
-    ? answeredCount 
+  const answeredQuestionsCount = useAdaptiveMode
+    ? answeredCount
     : Object.keys(answers).length;
 
   // Submit quiz handler (defined early for use in handleTimeUp)
-  const handleSubmitQuiz = useCallback(async (autoSubmit = false) => {
-    if (!autoSubmit) {
-      setShowSubmitDialog(false);
-    }
+  const handleSubmitQuiz = useCallback(
+    async (autoSubmit = false) => {
+      if (!autoSubmit) {
+        setShowSubmitDialog(false);
+      }
 
-    try {
-      // Prepare answers array
-      const answersArray = questions.map((q, idx) => ({
-        questionId: q._id,
-        answer: answers[idx] || null,
-        timeTaken: 0,
-      }));
+      try {
+        // Prepare answers array
+        const answersArray = questions.map((q, idx) => ({
+          questionId: q._id,
+          answer: answers[idx] || null,
+          timeTaken: 0,
+        }));
 
-      await submitQuiz.mutateAsync({
-        attemptId,
-        answers: answersArray,
-      });
+        await submitQuiz.mutateAsync({
+          attemptId,
+          answers: answersArray,
+        });
 
-      navigate(`/student/attempt/${attemptId}`, { replace: true });
-    } catch {
-      // Error handled in mutation
-    }
-  }, [attemptId, answers, questions, navigate, submitQuiz]);
+        navigate(`/student/attempt/${attemptId}`, { replace: true });
+      } catch {
+        // Error handled in mutation
+      }
+    },
+    [attemptId, answers, questions, navigate, submitQuiz],
+  );
 
   // Handle time up
   const handleTimeUp = useCallback(() => {
@@ -105,36 +139,59 @@ export default function TakeQuizPage() {
   // Initialize from attempt data
   useEffect(() => {
     if (attempt) {
-      // Set remaining time
-      if (attempt.remainingTime !== undefined) {
-        setRemainingTime(attempt.remainingTime);
-      } else if (attempt.startTime && quiz?.duration) {
-        const elapsed = Math.floor((Date.now() - new Date(attempt.startTime)) / 1000);
-        const remaining = Math.max(0, (quiz.duration * 60) - elapsed);
-        setRemainingTime(remaining);
+      // Set remaining time only once
+      if (!remainingTimeInitializedRef.current) {
+        let time = null;
+        if (
+          attempt.remainingTime !== undefined &&
+          attempt.remainingTime !== null
+        ) {
+          time = attempt.remainingTime;
+        } else if (
+          attemptData?.remainingTime !== undefined &&
+          attemptData?.remainingTime !== null
+        ) {
+          time = attemptData.remainingTime;
+        } else if (attempt.startTime && quiz?.duration) {
+          const elapsed = Math.floor(
+            (Date.now() - new Date(attempt.startTime)) / 1000,
+          );
+          time = Math.max(0, quiz.duration * 60 - elapsed);
+        }
+
+        if (time !== null) {
+          startTransition(() => {
+            setRemainingTime(time);
+          });
+          remainingTimeInitializedRef.current = true;
+        }
       }
 
       // For adaptive quiz - set current question
-      if (isAdaptive && attemptData?.currentQuestion) {
-        setCurrentQuestion(attemptData.currentQuestion);
-        setAnsweredCount(attemptData.questionNumber - 1 || 0);
+      if (useAdaptiveMode && attemptData?.currentQuestion) {
+        startTransition(() => {
+          setCurrentQuestion(attemptData.currentQuestion);
+          setAnsweredCount(attemptData.questionNumber - 1 || 0);
+        });
       }
 
       // For non-adaptive - load existing answers
-      if (!isAdaptive && attempt.answers) {
+      if (!useAdaptiveMode && attempt.answers) {
         const existingAnswers = {};
         attempt.answers.forEach((a, idx) => {
           if (a.selectedAnswer) {
             existingAnswers[idx] = a.selectedAnswer;
           }
         });
-        setAnswers(existingAnswers);
+        startTransition(() => {
+          setAnswers(existingAnswers);
+        });
       }
 
       // Initialize question start time
       questionStartTimeRef.current = Date.now();
     }
-  }, [attempt, attemptData, isAdaptive, quiz]);
+  }, [attempt, attemptData, useAdaptiveMode, quiz]);
 
   // Timer countdown
   useEffect(() => {
@@ -159,7 +216,9 @@ export default function TakeQuizPage() {
   const handleAdaptiveAnswer = async () => {
     if (!selectedAnswer || !currentQuestion) return;
 
-    const timeTaken = Math.floor((Date.now() - (questionStartTimeRef.current || Date.now())) / 1000);
+    const timeTaken = Math.floor(
+      (Date.now() - (questionStartTimeRef.current || Date.now())) / 1000,
+    );
 
     try {
       const result = await submitAnswer.mutateAsync({
@@ -216,7 +275,27 @@ export default function TakeQuizPage() {
     );
   }
 
-  if (!attempt || attempt.status === "completed") {
+  // Wait for questions to be available (handles race condition on initial navigation)
+  if (!attempt || (questions.length === 0 && !useAdaptiveMode && isFetching)) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!attempt) {
+    return (
+      <div className="flex h-screen items-center justify-center flex-col gap-4">
+        <p className="text-muted-foreground">Attempt not found</p>
+        <Button onClick={() => navigate('/student/quizzes')}>
+          Browse Quizzes
+        </Button>
+      </div>
+    );
+  }
+
+  if (attempt.status === "completed") {
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-4">
         <p className="text-muted-foreground">This attempt has been completed</p>
@@ -235,17 +314,23 @@ export default function TakeQuizPage() {
           <div>
             <h1 className="font-semibold">{quiz?.title}</h1>
             <p className="text-sm text-muted-foreground">
-              Question {isAdaptive ? answeredCount + 1 : currentQuestionIndex + 1} of {totalQuestions}
+              Question{" "}
+              {useAdaptiveMode ? answeredCount + 1 : currentQuestionIndex + 1} of{" "}
+              {totalQuestions}
             </p>
           </div>
 
           {/* Timer */}
-          <div className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-lg",
-            remainingTime < 60 ? "bg-red-100 text-red-700" : 
-            remainingTime < 300 ? "bg-yellow-100 text-yellow-700" : 
-            "bg-primary/10 text-primary"
-          )}>
+          <div
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg",
+              remainingTime < 60
+                ? "bg-red-100 text-red-700"
+                : remainingTime < 300
+                  ? "bg-yellow-100 text-yellow-700"
+                  : "bg-primary/10 text-primary",
+            )}
+          >
             <Clock className="h-5 w-5" />
             <span className="font-mono font-bold text-lg">
               {formatTime(remainingTime || 0)}
@@ -254,8 +339,8 @@ export default function TakeQuizPage() {
         </div>
 
         {/* Progress */}
-        <Progress 
-          value={(answeredQuestionsCount / totalQuestions) * 100} 
+        <Progress
+          value={(answeredQuestionsCount / totalQuestions) * 100}
           className="h-1 rounded-none"
         />
       </div>
@@ -268,18 +353,21 @@ export default function TakeQuizPage() {
               {/* Question */}
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Badge variant="outline">
-                    {currentQ.category}
-                  </Badge>
+                  <Badge variant="outline">{currentQ.category}</Badge>
                   <Badge variant="secondary">
-                    {currentQ.points || 1} {currentQ.points === 1 ? "point" : "points"}
+                    {currentQ.points || 1}{" "}
+                    {currentQ.points === 1 ? "point" : "points"}
                   </Badge>
-                  {isAdaptive && currentQ.difficultyLevel && (
-                    <Badge className={cn(
-                      currentQ.difficultyLevel === "easy" ? "bg-green-100 text-green-700" :
-                      currentQ.difficultyLevel === "medium" ? "bg-yellow-100 text-yellow-700" :
-                      "bg-red-100 text-red-700"
-                    )}>
+                  {useAdaptiveMode && currentQ.difficultyLevel && (
+                    <Badge
+                      className={cn(
+                        currentQ.difficultyLevel === "easy"
+                          ? "bg-green-100 text-green-700"
+                          : currentQ.difficultyLevel === "medium"
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-red-100 text-red-700",
+                      )}
+                    >
                       {currentQ.difficultyLevel}
                     </Badge>
                   )}
@@ -290,11 +378,13 @@ export default function TakeQuizPage() {
                 </h2>
               </div>
 
-              {/* Options */}
-              {currentQ.questionType === "mcq" && currentQ.options && (
+              {/* Options - default to mcq if questionType not specified */}
+              {(!currentQ.questionType || currentQ.questionType === "mcq") && currentQ.options?.length > 0 && (
                 <RadioGroup
                   value={selectedAnswer}
-                  onValueChange={isAdaptive ? setSelectedAnswer : handleNonAdaptiveAnswer}
+                  onValueChange={
+                    useAdaptiveMode ? setSelectedAnswer : handleNonAdaptiveAnswer
+                  }
                   className="space-y-3"
                   disabled={showFeedback !== null}
                 >
@@ -303,24 +393,40 @@ export default function TakeQuizPage() {
                       key={idx}
                       className={cn(
                         "flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-colors",
-                        selectedAnswer === option 
-                          ? "border-primary bg-primary/5" 
+                        selectedAnswer === option
+                          ? "border-primary bg-primary/5"
                           : "hover:bg-accent",
-                        showFeedback && option === showFeedback.correctAnswer && "border-green-500 bg-green-50",
-                        showFeedback && selectedAnswer === option && !showFeedback.isCorrect && "border-red-500 bg-red-50"
+                        showFeedback &&
+                          option === showFeedback.correctAnswer &&
+                          "border-green-500 bg-green-50",
+                        showFeedback &&
+                          selectedAnswer === option &&
+                          !showFeedback.isCorrect &&
+                          "border-red-500 bg-red-50",
                       )}
-                      onClick={() => !showFeedback && (isAdaptive ? setSelectedAnswer(option) : handleNonAdaptiveAnswer(option))}
+                      onClick={() =>
+                        !showFeedback &&
+                        (useAdaptiveMode
+                          ? setSelectedAnswer(option)
+                          : handleNonAdaptiveAnswer(option))
+                      }
                     >
                       <RadioGroupItem value={option} id={`option-${idx}`} />
-                      <Label htmlFor={`option-${idx}`} className="flex-1 cursor-pointer">
+                      <Label
+                        htmlFor={`option-${idx}`}
+                        className="flex-1 cursor-pointer"
+                      >
                         {option}
                       </Label>
-                      {showFeedback && option === showFeedback.correctAnswer && (
-                        <CheckCircle2 className="h-5 w-5 text-green-600" />
-                      )}
-                      {showFeedback && selectedAnswer === option && !showFeedback.isCorrect && (
-                        <XCircle className="h-5 w-5 text-red-600" />
-                      )}
+                      {showFeedback &&
+                        option === showFeedback.correctAnswer && (
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        )}
+                      {showFeedback &&
+                        selectedAnswer === option &&
+                        !showFeedback.isCorrect && (
+                          <XCircle className="h-5 w-5 text-red-600" />
+                        )}
                     </div>
                   ))}
                 </RadioGroup>
@@ -329,7 +435,9 @@ export default function TakeQuizPage() {
               {currentQ.questionType === "true-false" && (
                 <RadioGroup
                   value={selectedAnswer}
-                  onValueChange={isAdaptive ? setSelectedAnswer : handleNonAdaptiveAnswer}
+                  onValueChange={
+                    useAdaptiveMode ? setSelectedAnswer : handleNonAdaptiveAnswer
+                  }
                   className="flex gap-4"
                   disabled={showFeedback !== null}
                 >
@@ -338,14 +446,22 @@ export default function TakeQuizPage() {
                       key={value}
                       className={cn(
                         "flex-1 flex items-center justify-center gap-2 p-4 rounded-lg border cursor-pointer transition-colors",
-                        selectedAnswer === value 
-                          ? "border-primary bg-primary/5" 
-                          : "hover:bg-accent"
+                        selectedAnswer === value
+                          ? "border-primary bg-primary/5"
+                          : "hover:bg-accent",
                       )}
-                      onClick={() => !showFeedback && (isAdaptive ? setSelectedAnswer(value) : handleNonAdaptiveAnswer(value))}
+                      onClick={() =>
+                        !showFeedback &&
+                        (useAdaptiveMode
+                          ? setSelectedAnswer(value)
+                          : handleNonAdaptiveAnswer(value))
+                      }
                     >
                       <RadioGroupItem value={value} id={`tf-${value}`} />
-                      <Label htmlFor={`tf-${value}`} className="cursor-pointer capitalize text-lg">
+                      <Label
+                        htmlFor={`tf-${value}`}
+                        className="cursor-pointer capitalize text-lg"
+                      >
                         {value}
                       </Label>
                     </div>
@@ -353,9 +469,40 @@ export default function TakeQuizPage() {
                 </RadioGroup>
               )}
 
+              {/* Short Answer Input */}
+              {currentQ.questionType === "short-answer" && (
+                <div className="space-y-2">
+                  <Label htmlFor="short-answer" className="text-sm font-medium">
+                    Your Answer
+                  </Label>
+                  <Textarea
+                    id="short-answer"
+                    placeholder="Type your answer here..."
+                    value={selectedAnswer}
+                    onChange={(e) =>
+                      useAdaptiveMode
+                        ? setSelectedAnswer(e.target.value)
+                        : handleNonAdaptiveAnswer(e.target.value)
+                    }
+                    disabled={showFeedback !== null}
+                    className="min-h-32 resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Enter your answer in the text box above
+                  </p>
+                </div>
+              )}
+
               {/* Feedback */}
               {showFeedback && (
-                <Alert className={cn("mt-6", showFeedback.isCorrect ? "border-green-500" : "border-red-500")}>
+                <Alert
+                  className={cn(
+                    "mt-6",
+                    showFeedback.isCorrect
+                      ? "border-green-500"
+                      : "border-red-500",
+                  )}
+                >
                   <div className="flex items-center gap-2">
                     {showFeedback.isCorrect ? (
                       <CheckCircle2 className="h-5 w-5 text-green-600" />
@@ -367,7 +514,9 @@ export default function TakeQuizPage() {
                         {showFeedback.isCorrect ? "Correct!" : "Incorrect"}
                       </span>
                       {showFeedback.explanation && (
-                        <p className="mt-1 text-sm">{showFeedback.explanation}</p>
+                        <p className="mt-1 text-sm">
+                          {showFeedback.explanation}
+                        </p>
                       )}
                     </AlertDescription>
                   </div>
@@ -386,7 +535,7 @@ export default function TakeQuizPage() {
         {/* Navigation / Actions */}
         <div className="flex items-center justify-between">
           {/* Non-adaptive navigation */}
-          {!isAdaptive && (
+          {!useAdaptiveMode && (
             <>
               <Button
                 variant="outline"
@@ -416,7 +565,7 @@ export default function TakeQuizPage() {
           )}
 
           {/* Adaptive submit button */}
-          {isAdaptive && !showFeedback && (
+          {useAdaptiveMode && !showFeedback && (
             <div className="flex-1 flex justify-center">
               <Button
                 size="lg"
@@ -433,7 +582,7 @@ export default function TakeQuizPage() {
         </div>
 
         {/* Question Navigation Grid (non-adaptive) */}
-        {!isAdaptive && questions.length > 0 && (
+        {!useAdaptiveMode && questions.length > 0 && (
           <Card className="mt-6">
             <CardContent className="pt-6">
               <p className="text-sm font-medium mb-3">Question Navigator</p>
@@ -447,8 +596,8 @@ export default function TakeQuizPage() {
                       currentQuestionIndex === idx
                         ? "bg-primary text-primary-foreground"
                         : answers[idx]
-                        ? "bg-green-100 text-green-700 hover:bg-green-200"
-                        : "bg-muted hover:bg-muted/80"
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-muted hover:bg-muted/80",
                     )}
                   >
                     {idx + 1}
@@ -477,8 +626,8 @@ export default function TakeQuizPage() {
             <Alert variant="warning" className="border-yellow-500">
               <AlertTriangle className="h-4 w-4 text-yellow-600" />
               <AlertDescription>
-                You have {totalQuestions - answeredQuestionsCount} unanswered questions.
-                Unanswered questions will be marked as incorrect.
+                You have {totalQuestions - answeredQuestionsCount} unanswered
+                questions. Unanswered questions will be marked as incorrect.
               </AlertDescription>
             </Alert>
           )}
@@ -490,10 +639,13 @@ export default function TakeQuizPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowSubmitDialog(false)}
+            >
               Review Answers
             </Button>
-            <Button 
+            <Button
               onClick={() => handleSubmitQuiz(false)}
               disabled={submitQuiz.isPending}
             >

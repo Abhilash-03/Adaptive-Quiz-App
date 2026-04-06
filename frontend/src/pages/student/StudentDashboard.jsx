@@ -188,10 +188,10 @@ export default function StudentDashboard() {
                 <h4 className="text-sm font-medium mb-3">Performance by Category</h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {dashboard.categoryPerformance.slice(0, 4).map((cat) => (
-                    <div key={cat.category} className="flex items-center justify-between">
-                      <span className="text-sm">{cat.category}</span>
-                      <span className={`text-sm font-medium ${getGradeColor(cat.averageScore)}`}>
-                        {Math.round(cat.averageScore)}%
+                    <div key={cat._id} className="flex items-center justify-between">
+                      <span className="text-sm">{cat._id}</span>
+                      <span className={`text-sm font-medium ${getGradeColor(cat.avgScore || 0)}`}>
+                        {Math.round(cat.avgScore || 0)}%
                       </span>
                     </div>
                   ))}

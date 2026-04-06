@@ -84,7 +84,7 @@ export default function AttemptsPage() {
         filters={[
           {
             name: "status",
-            placeholder: "All Status",
+            placeholder: "Status",
             value: statusFilter,
             onChange: setStatusFilter,
             options: [

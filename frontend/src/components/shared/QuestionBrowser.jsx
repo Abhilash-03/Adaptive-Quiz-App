@@ -35,8 +35,8 @@ export function QuestionBrowser({
   });
 
   const questions = questionsData?.questions || [];
-  const totalPages = questionsData?.totalPages || 1;
-  const total = questionsData?.total || 0;
+  const totalPages = questionsData?.pagination?.totalPages || 1;
+  const total = questionsData?.pagination?.totalQuestions || 0;
 
   const isSelected = (id) => selectedQuestions.some((q) => q._id === id);
 
