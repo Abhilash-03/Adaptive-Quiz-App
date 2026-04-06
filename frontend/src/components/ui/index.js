@@ -83,6 +83,40 @@ export {
   TooltipProvider,
 } from "./tooltip";
 
+// Chart components
+export {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ChartContainer,
+  ChartTooltip,
+  CHART_COLORS,
+  CATEGORY_COLORS,
+  Label as ChartLabel,
+  LabelList,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
+  RadialBar,
+  RadialBarChart,
+  Rectangle,
+  ReferenceLine,
+  ResponsiveContainer,
+  Sector,
+  Tooltip as RechartsTooltip,
+  XAxis,
+  YAxis,
+} from "./chart";
+
 // Custom components
 export { Spinner, LoadingScreen, LoadingOverlay } from "./Spinner";
 export { EmptyState } from "./empty-state";
