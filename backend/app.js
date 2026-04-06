@@ -15,6 +15,7 @@ import quizRoutes from "./routes/quizzes.routes.js";
 import attemptRoutes from "./routes/attempts.routes.js";
 import notificationRoutes from "./routes/notifications.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
+import badgeRoutes from "./routes/badges.routes.js";
 
 // Load environment variables
 dotenv.config();
@@ -54,6 +55,7 @@ app.use("/api/quizzes", quizRoutes);
 app.use("/api/attempts", attemptRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/badges", badgeRoutes);
 
 // 404 Handler
 app.use(notFoundHandler);

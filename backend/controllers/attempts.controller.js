@@ -18,6 +18,7 @@ import {
 } from "../services/adaptiveDifficulty.service.js";
 import { createResultNotification } from "./notifications.controller.js";
 import { updateStreak } from "./analytics.controller.js";
+import { checkAndAwardBadges } from "../services/badges.service.js";
 
 // @route   POST /api/attempts/:quizId/start
 // @desc    Start a quiz attempt
@@ -264,6 +265,11 @@ const submitAnswer = asyncHandler(async (req, res) => {
 
     await attempt.save();
 
+    // Calculate difficulty gap to show when questions don't match AI target
+    const questionDifficultyScore = nextQuestion?.difficultyScore || 50;
+    const difficultyGap = Math.abs(newDifficulty - questionDifficultyScore);
+    const hasLimitedQuestions = difficultyGap > 20;
+
     return ApiResponse.success(res, isCorrect ? "Correct!" : "Incorrect", {
       isCorrect,
       correctAnswer: attempt.quiz.showResultsImmediately ? question.correctAnswer : null,
@@ -272,6 +278,9 @@ const submitAnswer = asyncHandler(async (req, res) => {
       questionNumber: answeredCount + 1,
       totalQuestions: attempt.quiz.totalQuestions,
       currentDifficulty: newDifficulty,
+      targetDifficulty: newDifficulty, // What AI thinks you should be at
+      actualDifficulty: questionDifficultyScore, // What question was available
+      hasLimitedQuestions, // True if AI couldn't find ideal question
     });
   }
 
@@ -425,6 +434,27 @@ const finishAttempt = async (attempt, res, message) => {
   // Update user streak
   await updateStreak(attempt.user);
 
+  // Check and award badges based on performance
+  const maxDifficultyReached = attempt.difficultyProgression.length > 0
+    ? attempt.difficultyProgression.reduce((max, d) => Math.max(max, d), 0) > 66 ? "hard"
+      : attempt.difficultyProgression.reduce((max, d) => Math.max(max, d), 0) > 33 ? "medium" : "easy"
+    : "medium";
+
+  const badgeResult = await checkAndAwardBadges(attempt.user, {
+    attemptId: attempt._id,
+    quizId: attempt.quiz._id || attempt.quiz,
+    score,
+    percentage,
+    totalQuestions: attempt.answers.length,
+    correctAnswers,
+    timeTaken: attempt.timeSpent,
+    duration: quiz.duration,
+    isAdaptive: quiz.isAdaptive,
+    maxDifficultyReached,
+    quizDifficulty: quiz.initialDifficulty || "medium",
+    isPassed,
+  });
+
   ApiResponse.success(res, message, {
     score,
     totalMarks: attempt.totalMarks,
@@ -439,6 +469,8 @@ const finishAttempt = async (attempt, res, message) => {
     skillLevel: newSkillLevel,
     analysis: performanceAnalysis,
     recommendations,
+    newBadges: badgeResult.newBadges,
+    totalBadges: badgeResult.totalBadges,
   });
 };
 
